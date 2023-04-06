@@ -9,7 +9,6 @@ import torch.nn.functional as F
 from PIL import Image
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
 import argparse
-from math import pi
 
 from inriaDataset import inriaDataset
 from PyTorch_YOLOv3.pytorchyolo import detect, models
@@ -19,8 +18,8 @@ from pytorchYOLOv4.demo import DetectorYolov4
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--a", default=1, type=float)
-parser.add_argument("--b", default=0.2, type=float)
-parser.add_argument("--c", default=0.5, type=float)
+parser.add_argument("--b", default=0.5, type=float)
+parser.add_argument("--c", default=1, type=float)
 parser.add_argument("--lr", default=0.01, type=float)
 parser.add_argument("--epoch", default=2000, type=int)
 parser.add_argument("--startImage", action='store_true')
@@ -40,6 +39,7 @@ parser.add_argument("--persp", action='store_true')
 parser.add_argument("--wrinkle", action='store_true')
 parser.add_argument("--patchSize", default=0.5, type=float)
 parser.add_argument("--imageFilter", default=0, type=float)
+parser.add_argument("--piecewise", default=None, type=float)
 parser.add_argument("--note", default="")
 args = parser.parse_args()
 
@@ -332,7 +332,7 @@ else:
             # max_prob_obj_cls, overlap_score, boxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True)
             # max_prob = torch.mean(max_prob_obj_cls)
             if target_cls is None:
-                L_det = detect_loss(boxes[:,:,4], labels).cuda()
+                L_det = detect_loss(boxes[:,:,4], labels, piecewise=args.piecewise).cuda()
             else:
                 L_det = detect_loss(boxes[:,:,6], labels).cuda()
             # L_det = max_prob

@@ -56,16 +56,16 @@ do_transform = args.allTrans
 max_patch = 0
 min_patch = img_size
 target_cls = args.targetClass
-regionX1 = 280
-regionX2 = 400
+regionX1 = 0
+regionX2 = 100
 regionY1 = 0
-regionY2 = 200
+regionY2 = 400
 
 if not os.path.exists(image_dir):
     os.makedirs(image_dir)
 
 with open(os.path.join(image_dir, "setting.txt"), 'w') as f:
-    f.write(f"Optimize on a region of the patch\nImage size: {img_size}\nBatch size: {batch_size}\n{args}")
+    f.write(f"Optimize on a region of the patch\nImage size: {img_size}\n{args}")
 
 
 def getMask(patch, labels):
