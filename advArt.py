@@ -11,7 +11,7 @@ from torchmetrics.detection.mean_ap import MeanAveragePrecision
 import argparse
 
 from inriaDataset import inriaDataset
-from pytorchyolo import detect, models
+from PyTorch_YOLOv3.pytorchyolo import detect, models
 from advArt_util import smoothness, similiar, detect_loss, combine, perspective, wrinkles, rotate, noise, NPS, blur
 from PyTorchYOLOv3.detect import DetectorYolov3
 from pytorchYOLOv4.demo import DetectorYolov4
