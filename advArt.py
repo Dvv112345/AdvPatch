@@ -171,7 +171,7 @@ train = torch.utils.data.Subset(dataset, list(range(train_size)))
 train_loader = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle=False, num_workers=2)
 
 # Load the image detection model
-yolo = models.load_model("PyTorch_YOLOv3/config/yolov3-custom.cfg", "PyTorch_YOLOv3/weights/yolov3.weights")
+yolo = models.load_model("PyTorch_YOLOv3/config/yolov3.cfg", "PyTorch_YOLOv3/weights/yolov3.weights")
 # if eval:
 #     if model == "v3":
 #         detector = DetectorYolov3(show_detail=False, tiny=tiny)
