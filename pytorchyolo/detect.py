@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader
 from torch.autograd import Variable
 
 from pytorchyolo.models import load_model
-from PyTorch_YOLOv3.pytorchyolo.utils.utils import load_classes, rescale_boxes, non_max_suppression, print_environment_info
+from pytorchyolo.utils.utils import load_classes, rescale_boxes, non_max_suppression, print_environment_info
 from pytorchyolo.utils.datasets import ImageFolder
 from pytorchyolo.utils.transforms import Resize, DEFAULT_TRANSFORMS
 
