@@ -12,7 +12,7 @@ import argparse
 
 from inriaDataset import inriaDataset
 from PyTorch_YOLOv3.pytorchyolo import detect, models
-from advArt_util import smoothness, similiar, detect_loss, combine, perspective, wrinkles, rotate, noise, NPS
+from advArt_util import smoothness, similiar, detect_loss, combine, perspective, wrinkles, rotate, noise, NPS, blur
 from PyTorchYOLOv3.detect import DetectorYolov3
 from pytorchYOLOv4.demo import DetectorYolov4
 
@@ -21,7 +21,7 @@ parser.add_argument("--a", default=1, type=float)
 parser.add_argument("--b", default=0.5, type=float)
 parser.add_argument("--c", default=1, type=float)
 parser.add_argument("--lr", default=0.01, type=float)
-parser.add_argument("--epoch", default=2000, type=int)
+parser.add_argument("--epoch", default=5000, type=int)
 parser.add_argument("--startImage", action='store_true')
 parser.add_argument("--allTrans", action='store_true')
 parser.add_argument("--eval", action='store_true')
@@ -35,6 +35,7 @@ parser.add_argument("--tiny", action='store_true')
 parser.add_argument("--saveTrans", action='store_true')
 parser.add_argument("--noise", action='store_true')
 parser.add_argument("--rotate", action='store_true')
+parser.add_argument("--blur", action='store_true')
 parser.add_argument("--persp", action='store_true')
 parser.add_argument("--wrinkle", action='store_true')
 parser.add_argument("--patchSize", default=0.5, type=float)
@@ -304,8 +305,11 @@ else:
             L_sim = similiar(patch, target)
             
             advImages = torch.zeros(images.shape).cuda()
+            patch_o = patch
+            if args.blur:
+                patch_o = blur(patch_o)
             for i in range(labels.size(0)):
-                patch_t = patch
+                patch_t = patch_o
                 trans_prob = torch.rand([1])
                 # trans_prob = 1
                 if do_transform or args.noise:
@@ -383,7 +387,7 @@ else:
         writer.add_scalar("mAP", mAP["map_50"], global_step=epoch)
         print("mAP: ", mAP["map_50"])
         metric.reset()
-        if epoch % 10 == 0:
+        if epoch % 10 == 0 or epoch == max_epoch - 1:
             patch_path = os.path.join(image_dir, "patch")
             if not os.path.exists(patch_path):
                 os.makedirs(patch_path)

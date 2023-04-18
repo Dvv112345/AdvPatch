@@ -1,5 +1,6 @@
 import torch
 from torchvision import transforms
+import torch.nn.functional as F
 
 def smoothness(patch):
     # Compute L_tv
@@ -103,7 +104,7 @@ def wrinkles(patch):
 
 
 def rotate(patch, targetResize):
-    angle = torch.cuda.FloatTensor(1).uniform_(-5, 5).item()
+    angle = torch.cuda.FloatTensor(1).uniform_(-10, 10).item()
     result = transforms.functional.rotate(patch, angle, expand=True)
     resize = transforms.Resize((targetResize, targetResize))
     result = resize(result)
@@ -111,9 +112,9 @@ def rotate(patch, targetResize):
 
 
 def noise(patch):
-    brightness = torch.cuda.FloatTensor(1).uniform_(-0.05, 0.05)
-    contrast = torch.cuda.FloatTensor(1).uniform_(0.9, 1.1)
-    noise = torch.cuda.FloatTensor(patch.size()).uniform_(-0.01, 0.01)
+    brightness = torch.cuda.FloatTensor(1).uniform_(-0.10, 0.10)
+    contrast = torch.cuda.FloatTensor(1).uniform_(0.8, 1.2)
+    noise = torch.cuda.FloatTensor(patch.size()).uniform_(-0.1, 0.1)
     result = patch * contrast + brightness + noise
     result.data = torch.clamp(result.data, min=0, max=1)
     return result
@@ -132,3 +133,10 @@ def NPS(patch, colorspace):
     result = torch.sum(minimum)
     return result
 
+def blur(patch):
+    filter = torch.zeros(3, 3, 3, 3).cuda()
+    avg_filter = torch.ones(3,3) / 9
+    for i in range(3):
+        filter[i,i] = avg_filter
+    result = F.conv2d(patch, filter, padding="same")
+    return result
