@@ -15,6 +15,8 @@ parser.add_argument("--imageFilter", default=0, type=float)
 parser.add_argument("--name", default="test")
 parser.add_argument("--resize", default=400, type=int)
 parser.add_argument("--patch", default="target_art.jpeg")
+parser.add_argument("--dataset", default="dataset/inria/Train/pos")
+parser.add_argument("--label", default="dataset/inria/Train/pos/yolo-labels_yolov4")
 args = parser.parse_args()
 
 targetResize = args.resize
@@ -89,8 +91,12 @@ def getMask(patch, labels):
     mask_t = mask_t.view(maskShape)
     return patch_t, mask_t
 
+<<<<<<< HEAD
 dataset = inriaDataset("myDataset/img", "myDataset/label", img_size, 14, minBox=args.imageFilter)
 # dataset = inriaDataset("dataset/inria/Train/pos", "dataset/inria/Train/pos/yolo-labels_yolov4", img_size, 14, minBox=args.imageFilter)
+=======
+dataset = inriaDataset(args.dataset, args.label, img_size, 14, minBox=args.imageFilter)
+>>>>>>> 9a9d7ca60d141eeef0a84057ea5cd2795dfab1a0
 dataset.filter()
 
 
