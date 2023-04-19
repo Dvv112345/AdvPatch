@@ -13,8 +13,8 @@ import argparse
 from inriaDataset import inriaDataset
 from PyTorch_YOLOv3.pytorchyolo import detect, models
 from advArt_util import smoothness, similiar, detect_loss, combine, perspective, wrinkles, rotate, noise, NPS, blur
-from PyTorchYOLOv3.detect import DetectorYolov3
-from pytorchYOLOv4.demo import DetectorYolov4
+# from PyTorchYOLOv3.detect import DetectorYolov3
+# from pytorchYOLOv4.demo import DetectorYolov4
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--a", default=1, type=float)
@@ -160,9 +160,10 @@ Image.fromarray((patch.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.u
 writer = SummaryWriter(log_dir=f"advArt_log/{experiment}", filename_suffix=experiment)
 
 # Load the dataset for training
-dataset = inriaDataset("dataset/inria/Train/pos", "dataset/inria/Train/pos/yolo-labels_yolov4", img_size, 14, minBox=args.imageFilter)
+# dataset = inriaDataset("dataset/inria/Train/pos", "dataset/inria/Train/pos/yolo-labels_yolov4", img_size, 14, minBox=args.imageFilter)
 # dataset = InriaDataset("dataset/inria/Train/pos", "dataset/inria/Train/pos/yolo-labels_yolov3", max_lab=14, imgsize=img_size)
-train_size = int(len(dataset) * 0.2)
+dataset = inriaDataset("myDataset/img", "myDataset/label", img_size, 14, minBox=args.imageFilter)
+train_size = int(len(dataset))
 print("Size of dataset: ", len(dataset))
 dataset.filter()
 if train_size > len(dataset):
@@ -171,7 +172,7 @@ train = torch.utils.data.Subset(dataset, list(range(train_size)))
 train_loader = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle=False, num_workers=2)
 
 # Load the image detection model
-yolo = models.load_model("PyTorch_YOLOv3/config/yolov3-custom.cfg", "PyTorch_YOLOv3/weights/yolov3.weights")
+yolo = models.load_model("PyTorch_YOLOv3/config/yolov3.cfg", "PyTorch_YOLOv3/weights/yolov3.weights")
 # if eval:
 #     if model == "v3":
 #         detector = DetectorYolov3(show_detail=False, tiny=tiny)
