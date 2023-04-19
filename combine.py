@@ -89,7 +89,8 @@ def getMask(patch, labels):
     mask_t = mask_t.view(maskShape)
     return patch_t, mask_t
 
-dataset = inriaDataset("dataset/inria/Train/pos", "dataset/inria/Train/pos/yolo-labels_yolov4", img_size, 14, minBox=args.imageFilter)
+dataset = inriaDataset("myDataset/img", "myDataset/label", img_size, 14, minBox=args.imageFilter)
+# dataset = inriaDataset("dataset/inria/Train/pos", "dataset/inria/Train/pos/yolo-labels_yolov4", img_size, 14, minBox=args.imageFilter)
 dataset.filter()
 
 
