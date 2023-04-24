@@ -44,6 +44,7 @@ parser.add_argument("--patchSize", default=0.5, type=float)
 parser.add_argument("--imageFilter", default=0, type=float)
 parser.add_argument("--piecewise", default=None, type=float)
 parser.add_argument("--note", default="")
+parser.add_argument("--continue", default=None)
 args = parser.parse_args()
 
 # Set the hyperparameters
@@ -66,6 +67,7 @@ model = args.model
 max_patch = 0
 min_patch = img_size
 target_cls = args.targetClass
+start = args.continue
 
 if not os.path.exists(image_dir):
     os.makedirs(image_dir)
@@ -148,7 +150,11 @@ if targetResize > 0:
     resize = transforms.Resize((targetResize, targetResize))
     target = resize(target)
 print(target.shape)
-if startImage or eval:
+if start is not None:
+    patch = Image.open(start).convert('RGB')
+    patch = transform(patch)
+    patch = patch.cuda()
+elif startImage or eval:
     patch = target.detach()
 else:
     patch = torch.rand(target.shape, device='cuda')
@@ -162,7 +168,7 @@ Image.fromarray((patch.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.u
 writer = SummaryWriter(log_dir=f"advArt_log/{experiment}", filename_suffix=experiment)
 
 # Load the dataset for training
-# dataset = inriaDataset("dataset/inria/Train/pos", "dataset/inria/Train/pos/yolo-labels_yolov4", img_size, 14, minBox=args.imageFilter)
+
 dataset = inriaDataset(args.dataset, args.label, img_size, 14, minBox=args.imageFilter)
 # dataset = InriaDataset("dataset/inria/Train/pos", "dataset/inria/Train/pos/yolo-labels_yolov3", max_lab=14, imgsize=img_size)
 
@@ -176,11 +182,11 @@ train_loader = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle
 
 # Load the image detection model
 yolo = models.load_model("PyTorch_YOLOv3/config/yolov3.cfg", "PyTorch_YOLOv3/weights/yolov3.weights")
-# if eval:
-#     if model == "v3":
-#         detector = DetectorYolov3(show_detail=False, tiny=tiny)
-#     else:
-#         detector = DetectorYolov4(show_detail=False, tiny=tiny)
+if eval:
+    if model == "v3":
+        detector = DetectorYolov3(show_detail=False, tiny=tiny)
+    else:
+        detector = DetectorYolov4(show_detail=False, tiny=tiny)
 
 # Set the optimizer
 # optimizer = torch.optim.SGD([patch], lr=lr, momentum=0.9)
