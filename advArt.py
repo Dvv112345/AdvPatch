@@ -44,6 +44,7 @@ parser.add_argument("--patchSize", default=0.5, type=float)
 parser.add_argument("--imageFilter", default=0, type=float)
 parser.add_argument("--piecewise", default=None, type=float)
 parser.add_argument("--note", default="")
+parser.add_argument("--continue", default=None)
 args = parser.parse_args()
 
 # Set the hyperparameters
@@ -66,6 +67,7 @@ model = args.model
 max_patch = 0
 min_patch = img_size
 target_cls = args.targetClass
+start = args.continue
 
 if not os.path.exists(image_dir):
     os.makedirs(image_dir)
@@ -148,7 +150,11 @@ if targetResize > 0:
     resize = transforms.Resize((targetResize, targetResize))
     target = resize(target)
 print(target.shape)
-if startImage or eval:
+if start is not None:
+    patch = Image.open(start).convert('RGB')
+    patch = transform(patch)
+    patch = patch.cuda()
+elif startImage or eval:
     patch = target.detach()
 else:
     patch = torch.rand(target.shape, device='cuda')
