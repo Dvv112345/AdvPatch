@@ -169,8 +169,6 @@ writer = SummaryWriter(log_dir=f"advArt_log/{experiment}", filename_suffix=exper
 
 # Load the dataset for training
 dataset = inriaDataset(args.dataset, args.label, img_size, 14, minBox=args.imageFilter)
-# dataset = InriaDataset("dataset/inria/Train/pos", "dataset/inria/Train/pos/yolo-labels_yolov3", max_lab=14, imgsize=img_size)
-dataset = inriaDataset("myDataset/img", "myDataset/label", img_size, 14, minBox=args.imageFilter)
 train_size = int(len(dataset))
 print("Size of dataset: ", len(dataset))
 dataset.filter()
