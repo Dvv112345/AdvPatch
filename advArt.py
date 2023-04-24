@@ -162,13 +162,10 @@ Image.fromarray((patch.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.u
 writer = SummaryWriter(log_dir=f"advArt_log/{experiment}", filename_suffix=experiment)
 
 # Load the dataset for training
-<<<<<<< HEAD
 # dataset = inriaDataset("dataset/inria/Train/pos", "dataset/inria/Train/pos/yolo-labels_yolov4", img_size, 14, minBox=args.imageFilter)
-=======
 dataset = inriaDataset(args.dataset, args.label, img_size, 14, minBox=args.imageFilter)
->>>>>>> 9a9d7ca60d141eeef0a84057ea5cd2795dfab1a0
 # dataset = InriaDataset("dataset/inria/Train/pos", "dataset/inria/Train/pos/yolo-labels_yolov3", max_lab=14, imgsize=img_size)
-dataset = inriaDataset("myDataset/img", "myDataset/label", img_size, 14, minBox=args.imageFilter)
+
 train_size = int(len(dataset))
 print("Size of dataset: ", len(dataset))
 dataset.filter()
