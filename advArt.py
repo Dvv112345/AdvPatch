@@ -23,7 +23,6 @@ parser.add_argument("--c", default=1, type=float)
 parser.add_argument("--lr", default=0.01, type=float)
 parser.add_argument("--epoch", default=5000, type=int)
 parser.add_argument("--startImage", action='store_true')
-parser.add_argument("--allTrans", action='store_true')
 parser.add_argument("--eval", action='store_true')
 parser.add_argument("--exp", default="test")
 parser.add_argument("--resize", default=400, type=int)
@@ -60,7 +59,6 @@ target_path = args.target
 experiment = args.exp
 image_dir = f"artImg/{experiment}"
 targetResize = args.resize
-do_transform = args.allTrans
 eval = args.eval
 tiny = args.tiny
 model = args.model
@@ -221,18 +219,30 @@ if eval:
             L_tv = smoothness(patch)
             L_sim = similiar(patch, target)
         
-            patch_t = patch
-            if do_transform:
-                patch_t = noise(patch_t)
-                patch_t = rotate(patch_t, targetResize)
-                # patch_t = perspective(patch_t)
-                patch_t = wrinkles(patch_t)
+            advImages = torch.zeros(images.shape).cuda()
+            patch_o = patch
+            if args.blur:
+                patch_o = blur(patch_o)
+            for i in range(labels.size(0)):
+                patch_t = patch_o
+                trans_prob = torch.rand([1])
+                # trans_prob = 1
+                if args.noise:
+                    patch_t = noise(patch_t)
+                if trans_prob > 0.6:
+                    if args.rotate:
+                        patch_t = rotate(patch_t, targetResize)
+                    if args.persp:
+                        patch_t = perspective(patch_t)
+                    if args.wrinkle:
+                        patch_t = wrinkles(patch_t)
+
+                patch_batch, mask = getMask(patch_t, labels[i].unsqueeze(0))
+                advImages[i] = combine(images[i], patch_batch, mask)
                 
                 if args.saveTrans:
                     path = os.path.join(image_dir, f"transformation_{counter}.png")
                     Image.fromarray((patch_t.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
-            patch_batch, mask = getMask(patch_t, labels)
-            advImages = combine(images, patch_batch, mask)
 
             # boxes = detect.detect_image(yolo, advImages, conf_thres=0, classes=0)
             # max_prob = torch.mean(torch.max(boxes[:,:,4], 1).values).cuda()
@@ -320,14 +330,14 @@ else:
                 patch_t = patch_o
                 trans_prob = torch.rand([1])
                 # trans_prob = 1
-                if do_transform or args.noise:
+                if args.noise:
                     patch_t = noise(patch_t)
                 if trans_prob > 0.6:
-                    if do_transform or args.rotate:
+                    if args.rotate:
                         patch_t = rotate(patch_t, targetResize)
                     if args.persp:
                         patch_t = perspective(patch_t)
-                    if do_transform or args.wrinkle:
+                    if args.wrinkle:
                         patch_t = wrinkles(patch_t)
 
                 patch_batch, mask = getMask(patch_t, labels[i].unsqueeze(0))
