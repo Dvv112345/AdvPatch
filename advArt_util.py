@@ -70,7 +70,7 @@ def wrinkles(patch):
         # Vector between all vertices and the selected one
         xv  = perturbed_mesh - vtex
         # Random movement 
-        mv = (torch.rand(1,2).cuda() - 0.5)*10
+        mv = (torch.rand(1,2).cuda() - 0.5)*5
         hxv = torch.zeros(xv.size(0), xv.size(1)+1).cuda()
         hxv[:, :-1] = xv
         mv_r3 = torch.cat((mv, torch.tensor([[0]]).cuda()), 1)
