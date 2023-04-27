@@ -13,6 +13,7 @@ import argparse
 from inriaDataset import inriaDataset
 from PyTorch_YOLOv3.pytorchyolo import detect, models
 from advArt_util import smoothness, similiar, detect_loss, combine, perspective, wrinkles, rotate, noise, NPS, blur
+from pytorchYOLOv4.demo import DetectorYolov4
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--a", default=1, type=float)
@@ -175,10 +176,13 @@ train = torch.utils.data.Subset(dataset, list(range(train_size)))
 train_loader = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle=False, num_workers=2)
 
 # Load the image detection model
-if tiny:
-    yolo = models.load_model("PyTorch_YOLOv3/config/yolov3-tiny.cfg", "PyTorch_YOLOv3/weights/yolov3-tiny.weights")
+if model == "v3":
+    if tiny:
+        yolo = models.load_model("PyTorch_YOLOv3/config/yolov3-tiny.cfg", "PyTorch_YOLOv3/weights/yolov3-tiny.weights")
+    else:
+        yolo = models.load_model("PyTorch_YOLOv3/config/yolov3.cfg", "PyTorch_YOLOv3/weights/yolov3.weights")
 else:
-    yolo = models.load_model("PyTorch_YOLOv3/config/yolov3.cfg", "PyTorch_YOLOv3/weights/yolov3.weights")
+    detector = DetectorYolov4(show_detail=False, tiny=tiny)
 
 # Set the optimizer
 # optimizer = torch.optim.SGD([patch], lr=lr, momentum=0.9)
@@ -193,7 +197,10 @@ if eval:
         for images, labels in train_loader:
             images = images.cuda()
             labels = labels.cuda()
-            initialBoxes = detect.detect_image(yolo, images, conf_thres=0, classes=0).cuda()
+            if model == "v3":
+                initialBoxes = detect.detect_image(yolo, images, conf_thres=0, classes=0).cuda()
+            else:
+                _, _, initialBoxes = detector.detect(input_imgs=images, cls_id_attacked=0, clear_imgs=None, with_bbox=True).cuda()
             # initialProb = torch.mean(torch.max(initialBoxes[:,:,4], 1).values)
             # print(f"Initial Probability: {initialProb}")
             gt = []
@@ -249,7 +256,10 @@ if eval:
                     path = os.path.join(image_dir, f"transformation_{counter}.png")
                     Image.fromarray((patch_t.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
 
-            boxes = detect.detect_image(yolo, advImages, conf_thres=0, classes=0)
+            if model == "v3":
+                boxes = detect.detect_image(yolo, advImages, conf_thres=0, classes=0)
+            else:
+                _, _, initialBoxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True)
             max_prob = torch.mean(torch.max(boxes[:,:,4], 1).values).cuda()
             # L_det = detect_loss(boxes[:,:,4], labels).cuda()
             L_det = max_prob
@@ -289,7 +299,10 @@ else:
         for images, labels in train_loader:
             images = images.cuda()
             # labels = labels.cuda()
-            initialBoxes = detect.detect_image(yolo, images, conf_thres=0, classes=0).cuda()
+            if model == "v3":
+                initialBoxes = detect.detect_image(yolo, images, conf_thres=0, classes=0).cuda()
+            else:
+                _, _, initialBoxes = detector.detect(input_imgs=images, cls_id_attacked=0, clear_imgs=None, with_bbox=True).cuda()
             # initialProb = torch.mean(torch.max(initialBoxes[:,:,4], 1).values)
             # print(f"Initial Probability: {initialProb}")
             gt = []
@@ -347,7 +360,11 @@ else:
             # path = os.path.join(image_dir, f"detailCombine.png")
             # Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
 
-            boxes = detect.detect_image(yolo, advImages, conf_thres=0, classes=0, target=target_cls)
+            if model == "v3":
+                boxes = detect.detect_image(yolo, advImages, conf_thres=0, classes=0, target=target_cls)
+            else:
+                _, _, boxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True)
+
             # print(boxes.shape)
             max_prob = torch.mean(torch.max(boxes[:,:,4], 1).values).cuda()
             # max_prob_obj_cls, overlap_score, boxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True)
