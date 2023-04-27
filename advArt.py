@@ -13,8 +13,6 @@ import argparse
 from inriaDataset import inriaDataset
 from PyTorch_YOLOv3.pytorchyolo import detect, models
 from advArt_util import smoothness, similiar, detect_loss, combine, perspective, wrinkles, rotate, noise, NPS, blur
-from PyTorchYOLOv3.detect import DetectorYolov3
-from pytorchYOLOv4.demo import DetectorYolov4
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--a", default=1, type=float)
@@ -181,11 +179,6 @@ if tiny:
     yolo = models.load_model("PyTorch_YOLOv3/config/yolov3-tiny.cfg", "PyTorch_YOLOv3/weights/yolov3-tiny.weights")
 else:
     yolo = models.load_model("PyTorch_YOLOv3/config/yolov3.cfg", "PyTorch_YOLOv3/weights/yolov3.weights")
-if eval:
-    if model == "v3":
-        detector = DetectorYolov3(show_detail=False, tiny=tiny)
-    else:
-        detector = DetectorYolov4(show_detail=False, tiny=tiny)
 
 # Set the optimizer
 # optimizer = torch.optim.SGD([patch], lr=lr, momentum=0.9)
@@ -200,10 +193,9 @@ if eval:
         for images, labels in train_loader:
             images = images.cuda()
             labels = labels.cuda()
-            # initialBoxes = detect.detect_image(yolo, images, conf_thres=0, classes=0).cuda()
+            initialBoxes = detect.detect_image(yolo, images, conf_thres=0, classes=0).cuda()
             # initialProb = torch.mean(torch.max(initialBoxes[:,:,4], 1).values)
             # print(f"Initial Probability: {initialProb}")
-            _, _, initialBoxes = detector.detect(input_imgs=images, cls_id_attacked=0, clear_imgs=None, with_bbox=True)
             gt = []
             preds = []
             for i in range(images.shape[0]):
@@ -257,10 +249,8 @@ if eval:
                     path = os.path.join(image_dir, f"transformation_{counter}.png")
                     Image.fromarray((patch_t.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
 
-            # boxes = detect.detect_image(yolo, advImages, conf_thres=0, classes=0)
-            # max_prob = torch.mean(torch.max(boxes[:,:,4], 1).values).cuda()
-            max_prob_obj_cls, overlap_score, boxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True)
-            max_prob = torch.mean(max_prob_obj_cls)
+            boxes = detect.detect_image(yolo, advImages, conf_thres=0, classes=0)
+            max_prob = torch.mean(torch.max(boxes[:,:,4], 1).values).cuda()
             # L_det = detect_loss(boxes[:,:,4], labels).cuda()
             L_det = max_prob
             for i in range(images.shape[0]):
@@ -268,8 +258,7 @@ if eval:
                 if len(currentBox.shape) == 2:
                     currentBox = currentBox[currentBox[:,4]>0.5]
                     preds.append(dict(boxes=currentBox[:, :4],
-                    # scores=currentBox[:, 4],
-                    scores=currentBox[:, 4]*currentBox[:, 5],
+                    scores=currentBox[:, 4],
                     labels=torch.zeros(currentBox.shape[0])))
                 else:
                     preds.append(dict(boxes=torch.tensor([]),
@@ -305,7 +294,6 @@ else:
             initialBoxes = detect.detect_image(yolo, images, conf_thres=0, classes=0).cuda()
             # initialProb = torch.mean(torch.max(initialBoxes[:,:,4], 1).values)
             # print(f"Initial Probability: {initialProb}")
-            # _, _, initialBoxes = detector.detect(input_imgs=images, cls_id_attacked=0, clear_imgs=None, with_bbox=True)
             gt = []
             preds = []
             for i in range(images.shape[0]):
@@ -377,7 +365,6 @@ else:
                     currentBox = currentBox[currentBox[:,4]>0.5]
                     preds.append(dict(boxes=currentBox[:, :4],
                     scores=currentBox[:, 4],
-                    # scores=currentBox[:, 4]*currentBox[:, 5],
                     labels=torch.zeros(currentBox.shape[0])))
                 else:
                     preds.append(dict(boxes=torch.tensor([]),
