@@ -216,7 +216,7 @@ if eval:
                     gt.append(dict(boxes=torch.tensor([]),
                     labels=torch.tensor([])))
 
-            # labels = torch.cat((initialBoxes[:,:15,:4]/img_size, initialBoxes[:,:15,5].unsqueeze(2)), 2).cuda()
+            labels = torch.cat((initialBoxes[:,:15,:4]/img_size, initialBoxes[:,:15,5].unsqueeze(2)), 2).cuda()
 
             # Compute L_tv and L_sim
             L_tv = smoothness(patch)
