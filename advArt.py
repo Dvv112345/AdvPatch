@@ -279,11 +279,10 @@ if eval:
             Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(combine_path)
             counter += 1
         mAP = metric.compute()
-        print("mAP50: ", mAP["map_50"])
         print("mAP: ", mAP["map"])
         metric.reset()
         with open(os.path.join(image_dir, "result.txt"), 'w') as f:
-            f.write(f"mAP: {mAP['map_50']}")
+            f.write(f"mAP: {mAP['map']}")
 else:
     for epoch in range(max_epoch):
         print(f"Epoch {epoch}")
@@ -401,8 +400,8 @@ else:
         print(f"End of epoch {epoch}")
         print(f"Max size of patch: {max_patch}; Min size of patch: {min_patch}")
         mAP = metric.compute()
-        writer.add_scalar("mAP", mAP["map_50"], global_step=epoch)
-        print("mAP: ", mAP["map_50"])
+        writer.add_scalar("mAP", mAP["map"], global_step=epoch)
+        print("mAP: ", mAP["map"])
         metric.reset()
         if epoch % 10 == 0 or epoch == max_epoch - 1:
             patch_path = os.path.join(image_dir, "patch")
