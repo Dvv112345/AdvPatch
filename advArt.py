@@ -209,14 +209,24 @@ if eval:
             for i in range(images.shape[0]):
                 currentBox = initialBoxes[i]
                 if len(currentBox.shape) == 2:
-                    currentBox = currentBox[currentBox[:,4]>0.5]
+                    currentBox[currentBox[:,4]<=0.5] = img_size
+                    initialBoxes[i] = currentBox
+                    currentBox = currentBox[currentBox[:,4] < img_size]
                     gt.append(dict(boxes=currentBox[:, :4],
                     labels=torch.zeros(currentBox.shape[0])))
                 else:
                     gt.append(dict(boxes=torch.tensor([]),
                     labels=torch.tensor([])))
 
-            labels = torch.cat((initialBoxes[:,:15,:4]/img_size, initialBoxes[:,:15,5].unsqueeze(2)), 2).cuda()
+            # print(labels[0])
+            initialBoxes = initialBoxes / img_size
+            width = initialBoxes[:,:14,2] - initialBoxes[:, :14, 0]
+            width = torch.where((width == 0), 1, width)
+            height = initialBoxes[:,:14,3] - initialBoxes[:, :14, 1]
+            height = torch.where((height==0), 1, height)
+            center_x = initialBoxes[:, :14, 0] + width/2
+            center_y = initialBoxes[:, :14, 1] + height/2
+            labels = torch.cat((initialBoxes[:, :14, 5].unsqueeze(2), center_x.unsqueeze(2), center_y.unsqueeze(2), width.unsqueeze(2), height.unsqueeze(2)), 2).cuda()
 
             # Compute L_tv and L_sim
             L_tv = smoothness(patch)
