@@ -279,7 +279,8 @@ if eval:
             Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(combine_path)
             counter += 1
         mAP = metric.compute()
-        print("mAP: ", mAP["map_50"])
+        print("mAP50: ", mAP["map_50"])
+        print("mAP: ", mAP["map"])
         metric.reset()
         with open(os.path.join(image_dir, "result.txt"), 'w') as f:
             f.write(f"mAP: {mAP['map_50']}")
