@@ -275,14 +275,12 @@ if eval:
             print(f"Detecton loss: {L_det}")
         
             torch.cuda.empty_cache()
+            combine_path = os.path.join(image_dir, f"combine_{counter}.png")
+            Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(combine_path)
             counter += 1
         mAP = metric.compute()
         print("mAP: ", mAP["map_50"])
         metric.reset()
-        patch_path = os.path.join(image_dir, "patch.png")
-        Image.fromarray((patch.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(patch_path)
-        combine_path = os.path.join(image_dir, "combine.png")
-        Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(combine_path)
         with open(os.path.join(image_dir, "result.txt"), 'w') as f:
             f.write(f"mAP: {mAP['map_50']}")
 else:
