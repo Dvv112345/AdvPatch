@@ -134,6 +134,7 @@ def plot_boxes_cv2(img, boxes, savename=None, class_names=None, color=None):
             if color is None:
                 rgb = (red, green, blue)
             cls_conf = round(cls_conf, 2)
+            print(cls_conf)
             img = cv2.putText(img, f"{class_names[cls_id]}: {cls_conf}", (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 1.2, rgb, 1)
         img = cv2.rectangle(img, (x1, y1), (x2, y2), rgb, 1)
     if savename:
