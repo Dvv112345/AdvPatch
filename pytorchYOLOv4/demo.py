@@ -23,6 +23,7 @@ from tool.darknet2pytorch import Darknet
 import torch.nn.functional as F
 import argparse
 from ipdb import set_trace as st
+import os
 
 
 """hyper parameters"""
@@ -149,7 +150,7 @@ class DetectorYolov4():
             return max_prob_obj_cls, overlap_score, []
     
 
-def detect_cv2(cfgfile, weightfile, imgfile):
+def detect_cv2(cfgfile, weightfile, imgfile, output='predictions.jpg'):
     import cv2
     m = Darknet(cfgfile)
 
@@ -180,7 +181,7 @@ def detect_cv2(cfgfile, weightfile, imgfile):
         if i == 1:
             print('%s: Predicted in %f seconds.' % (imgfile, (finish - start)))
 
-    plot_boxes_cv2(img, boxes[0], savename='predictions.jpg', class_names=class_names)
+    plot_boxes_cv2(img, boxes[0], savename=output, class_names=class_names)
 
 
 def detect_cv2_camera(cfgfile, weightfile):
@@ -271,6 +272,7 @@ def get_args():
     parser.add_argument('-imgfile', type=str,
                         default=None,
                         help='path of your image file.', dest='imgfile')
+    parser.add_argument("-d", action='store_true', help='Iterate over a directory', dest='directory')
     args = parser.parse_args()
 
     return args
@@ -279,7 +281,13 @@ def get_args():
 if __name__ == '__main__':
     args = get_args()
     if args.imgfile:
-        detect_cv2(args.cfgfile, args.weightfile, args.imgfile)
+        if args.directory:
+            if not os.path.exists("output"):
+                os.makedirs("output")
+            for file in os.listdir(args.imgfile):
+                detect_cv2(args.cfgfile, args.weightfile, file, output=os.join("output",f"{file}"))
+        else:
+            detect_cv2(args.cfgfile, args.weightfile, args.imgfile)
         # detect_imges(args.cfgfile, args.weightfile)
         # detect_cv2(args.cfgfile, args.weightfile, args.imgfile)
         # detect_skimage(args.cfgfile, args.weightfile, args.imgfile)
