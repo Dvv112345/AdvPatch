@@ -285,7 +285,7 @@ if __name__ == '__main__':
             if not os.path.exists("output"):
                 os.makedirs("output")
             for file in os.listdir(args.imgfile):
-                detect_cv2(args.cfgfile, args.weightfile, file, output=os.path.join("output",f"{file}"))
+                detect_cv2(args.cfgfile, args.weightfile, os.path.join(args.imgfile, file), output=os.path.join("output",file))
         else:
             detect_cv2(args.cfgfile, args.weightfile, args.imgfile)
         # detect_imges(args.cfgfile, args.weightfile)
