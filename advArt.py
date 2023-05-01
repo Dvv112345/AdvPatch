@@ -177,11 +177,13 @@ train_loader = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle
 
 # Load the image detection model
 if model == "v3":
+    print("Using YOLOv3")
     if tiny:
         yolo = models.load_model("PyTorch_YOLOv3/config/yolov3-tiny.cfg", "PyTorch_YOLOv3/weights/yolov3-tiny.weights")
     else:
         yolo = models.load_model("PyTorch_YOLOv3/config/yolov3.cfg", "PyTorch_YOLOv3/weights/yolov3.weights")
 else:
+    print("Using YOLOv4")
     detector = DetectorYolov4(show_detail=False, tiny=tiny)
 
 # Set the optimizer
