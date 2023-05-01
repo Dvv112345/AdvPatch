@@ -372,7 +372,7 @@ else:
             if target_cls is None:
                 L_det = detect_loss(boxes[:,:,4], labels, piecewise=args.piecewise).cuda()
             else:
-                L_det = detect_loss(boxes[:,:,6], labels).cuda()
+                L_det = detect_loss(boxes[:,:,6], labels, piecewise=args.piecewise).cuda()
             # L_det = max_prob
             for i in range(images.shape[0]):
                 currentBox = boxes[i]
