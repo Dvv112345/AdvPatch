@@ -32,7 +32,7 @@ parser.add_argument("--dataset", default="dataset/inria/Train/pos")
 parser.add_argument("--label", default="dataset/inria/Train/pos/yolo-labels_yolov4")
 parser.add_argument("--model", default="v3")
 parser.add_argument("--tiny", action='store_true')
-parser.add_argument("--saveTrans", action='store_true')
+parser.add_argument("--saveDetail", action='store_true')
 parser.add_argument("--noise", action='store_true')
 parser.add_argument("--rotate", action='store_true')
 parser.add_argument("--blur", action='store_true')
@@ -253,10 +253,6 @@ if eval:
 
                 patch_batch, mask = getMask(patch_t, labels[i].unsqueeze(0))
                 advImages[i] = combine(images[i], patch_batch, mask)
-                
-                if args.saveTrans:
-                    path = os.path.join(image_dir, f"transformation_{counter}.png")
-                    Image.fromarray((patch_t.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
 
             if model == "v3":
                 boxes = detect.detect_image(yolo, advImages, conf_thres=0, classes=0)
@@ -278,10 +274,11 @@ if eval:
                     labels=torch.tensor([])))
             metric.update(preds, gt)
 
-            # path = os.path.join(image_dir, f"detail.png")
-            # Image.fromarray((patch_t.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
-            # path = os.path.join(image_dir, f"detailCombine.png")
-            # Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
+            if args.saveDetail:
+                path = os.path.join(image_dir, f"detail_{counter}.png")
+                Image.fromarray((patch_t.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
+                path = os.path.join(image_dir, f"detailCombine_{counter}.png")
+                Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
 
             # Print the loss
             print(f"Detecton loss: {L_det}")
@@ -357,10 +354,11 @@ else:
                 patch_batch, mask = getMask(patch_t, labels[i].unsqueeze(0))
                 advImages[i] = combine(images[i], patch_batch, mask)
 
-            # path = os.path.join(image_dir, f"detail.png")
-            # Image.fromarray((patch_t.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
-            # path = os.path.join(image_dir, f"detailCombine.png")
-            # Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
+            if args.saveDetail:
+                    path = os.path.join(image_dir, f"detail_{counter}.png")
+                    Image.fromarray((patch_t.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
+                    path = os.path.join(image_dir, f"detailCombine_{counter}.png")
+                    Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
 
             if model == "v3":
                 boxes = detect.detect_image(yolo, advImages, conf_thres=0, classes=0, target=target_cls)
@@ -431,8 +429,3 @@ else:
             if not os.path.exists(combine_path):
                 os.makedirs(combine_path)
             Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(os.path.join(combine_path, f"{epoch}.png"))
-            if args.saveTrans:
-                trans_path = os.path.join(image_dir, "transformation")
-                if not os.path.exists(trans_path):
-                    os.makedirs(trans_path)
-                Image.fromarray((patch_t.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(os.path.join(trans_path, f"{epoch}.png"))
