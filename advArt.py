@@ -162,7 +162,8 @@ path = os.path.join(image_dir, f"initial.png")
 Image.fromarray((patch.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
 
 # Set tensorboard
-writer = SummaryWriter(log_dir=f"advArt_log/{experiment}", filename_suffix=experiment)
+if not eval:
+    writer = SummaryWriter(log_dir=f"advArt_log/{experiment}", filename_suffix=experiment)
 
 # Load the dataset for training
 
