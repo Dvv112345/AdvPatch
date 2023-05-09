@@ -178,9 +178,9 @@ def post_processing(img, conf_thresh, nms_thresh, output, show_detail=False):
 
     t1 = time.time()
 
-    if type(box_array).__name__ != 'ndarray':
-        box_array = box_array.cpu().detach().numpy()
-        confs = confs.cpu().detach().numpy()
+    # if type(box_array).__name__ != 'ndarray':
+    #     box_array = box_array.cpu().detach().numpy()
+    #     confs = confs.cpu().detach().numpy()
 
     num_classes = confs.shape[2]
 

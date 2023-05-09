@@ -258,7 +258,7 @@ if eval:
             if model == "v3":
                 boxes = detect.detect_image(yolo, advImages, conf_thres=0, classes=0)
             else:
-                _, _, initialBoxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True)
+                _, _, boxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True)
             max_prob = torch.mean(torch.max(boxes[:,:,4], 1).values).cuda()
             # L_det = detect_loss(boxes[:,:,4], labels).cuda()
             L_det = max_prob
