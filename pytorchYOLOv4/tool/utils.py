@@ -3,6 +3,7 @@ import os
 import time
 import math
 import numpy as np
+import torch
 
 import itertools
 import struct  # get_image_size
@@ -219,9 +220,11 @@ def post_processing(img, conf_thresh, nms_thresh, output, show_detail=False):
 
                 for k in range(ll_box_array.shape[0]):
                     bboxes.append([ll_box_array[k, 0], ll_box_array[k, 1], ll_box_array[k, 2], ll_box_array[k, 3], ll_max_conf[k], ll_max_conf[k], ll_max_id[k]])
-        
+        print(type(bboxes))
+        print(bboxes.shape)
         bboxes_batch.append(bboxes)
 
+    output = torch.cat(bboxes_batch)
     t3 = time.time()
 
     if(show_detail):
