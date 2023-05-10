@@ -196,8 +196,9 @@ def post_processing(img, conf_thresh, nms_thresh, output, show_detail=False, tar
     t2 = time.time()
 
     bboxes_batch = []
-    if targetClass is not None:
-        i = targetClass
+
+    for i in range(box_array.shape[0]):
+       
         argwhere = max_conf[i] > conf_thresh
         # print(argwhere.shape)
         l_box_array = box_array[i][argwhere]
@@ -207,7 +208,8 @@ def post_processing(img, conf_thresh, nms_thresh, output, show_detail=False, tar
         bboxes = []
         # nms for each class
         for j in range(num_classes):
-
+            if targetClass is not None and j != targetClass:
+                continue
             cls_argwhere = l_max_id == j
             ll_box_array = l_box_array[cls_argwhere, :]
             ll_max_conf = l_max_conf[cls_argwhere]
@@ -218,41 +220,16 @@ def post_processing(img, conf_thresh, nms_thresh, output, show_detail=False, tar
                 ll_box_array = ll_box_array[keep, :]
                 ll_max_conf = ll_max_conf[keep]
                 ll_max_id = ll_max_id[keep]
+                print(ll_box_array.shape)
+                print(ll_max_conf.shape)
+                print(ll_max_id.shape)
 
                 for k in range(ll_box_array.shape[0]):
                     bboxes.append([ll_box_array[k, 0], ll_box_array[k, 1], ll_box_array[k, 2], ll_box_array[k, 3], ll_max_conf[k], ll_max_conf[k], ll_max_id[k]])
         print(type(bboxes))
-        print(bboxes.shape)
+        print(len(bboxes[0]))
+        print(bboxes)
         bboxes_batch.append(bboxes)
-    else:
-        for i in range(box_array.shape[0]):
-        
-            argwhere = max_conf[i] > conf_thresh
-            # print(argwhere.shape)
-            l_box_array = box_array[i][argwhere]
-            l_max_conf = max_conf[i][argwhere]
-            l_max_id = max_id[i][argwhere]
-
-            bboxes = []
-            # nms for each class
-            for j in range(num_classes):
-
-                cls_argwhere = l_max_id == j
-                ll_box_array = l_box_array[cls_argwhere, :]
-                ll_max_conf = l_max_conf[cls_argwhere]
-                ll_max_id = l_max_id[cls_argwhere]
-
-                keep = nms_cpu(ll_box_array, ll_max_conf, nms_thresh)
-                if (keep.shape[0] > 0):
-                    ll_box_array = ll_box_array[keep, :]
-                    ll_max_conf = ll_max_conf[keep]
-                    ll_max_id = ll_max_id[keep]
-
-                    for k in range(ll_box_array.shape[0]):
-                        bboxes.append([ll_box_array[k, 0], ll_box_array[k, 1], ll_box_array[k, 2], ll_box_array[k, 3], ll_max_conf[k], ll_max_conf[k], ll_max_id[k]])
-            print(type(bboxes))
-            print(bboxes.shape)
-            bboxes_batch.append(bboxes)
 
     output = torch.cat(bboxes_batch)
     t3 = time.time()
