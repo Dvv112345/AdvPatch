@@ -218,17 +218,15 @@ def post_processing(img, conf_thresh, nms_thresh, output, show_detail=False, tar
             keep = nms_cpu(ll_box_array, ll_max_conf, nms_thresh)
             if (keep.shape[0] > 0):
                 ll_box_array = ll_box_array[keep, :]
-                ll_max_conf = ll_max_conf[keep]
-                ll_max_id = ll_max_id[keep]
-                print(ll_box_array.shape)
-                print(ll_max_conf.shape)
-                print(ll_max_id.shape)
+                ll_max_conf = ll_max_conf[keep].unsqueeze(1)
+                ll_max_id = ll_max_id[keep].unsqueeze(1)
+                # print(ll_box_array.shape)
+                # print(ll_max_conf.shape)
+                # print(ll_max_id.shape)
 
-                for k in range(ll_box_array.shape[0]):
-                    bboxes.append([ll_box_array[k, 0], ll_box_array[k, 1], ll_box_array[k, 2], ll_box_array[k, 3], ll_max_conf[k], ll_max_conf[k], ll_max_id[k]])
-        print(type(bboxes))
-        print(len(bboxes[0]))
-        print(bboxes)
+                bboxes = torch.cat([ll_box_array, ll_max_conf, ll_max_id], dim=1)
+                # for k in range(ll_box_array.shape[0]):
+                #     bboxes.append([ll_box_array[k, 0], ll_box_array[k, 1], ll_box_array[k, 2], ll_box_array[k, 3], ll_max_conf[k], ll_max_id[k]])
         bboxes_batch.append(bboxes)
 
     output = torch.cat(bboxes_batch)
