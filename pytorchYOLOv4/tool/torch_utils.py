@@ -73,7 +73,7 @@ def convert2cpu_long(gpu_matrix):
 
 
 
-def do_detect(model, img, conf_thresh, nms_thresh, use_cuda=1, show_detail=False):
+def do_detect(model, img, conf_thresh, nms_thresh, use_cuda=1, show_detail=False, targetClass=None):
     model.eval()
     t0 = time.time()
 
@@ -104,5 +104,5 @@ def do_detect(model, img, conf_thresh, nms_thresh, use_cuda=1, show_detail=False
         print('      Model Inference : %f' % (t2 - t1))
         print('-----------------------------------')
 
-    return utils.post_processing(img, conf_thresh, nms_thresh, output)
+    return utils.post_processing(img, conf_thresh, nms_thresh, output, targetClass=targetClass)
 
