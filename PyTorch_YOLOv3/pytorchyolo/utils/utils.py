@@ -374,13 +374,12 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
             i = i[:max_det]
 
         current = x[i]
-        output[xi] = current.unsqueeze(0)
+        output[xi] = current
 
         if (time.time() - t) > time_limit:
             print(f'WARNING: NMS time limit {time_limit}s exceeded')
             break  # time limit exceeded
-    result = torch.cat(output)
-    return result
+    return output
 
 
 def print_environment_info():

@@ -300,34 +300,35 @@ else:
             images = images.cuda()
             # labels = labels.cuda()
             if model == "v3":
-                initialBoxes = detect.detect_image(yolo, images, conf_thres=0, classes=0).cuda()
+                initialBoxes = detect.detect_image(yolo, images, conf_thres=0.5, classes=0)
+                print(initialBoxes[0].shape)
+                # print(initialBoxes)
             else:
-                _, _, initialBoxes = detector.detect(input_imgs=images, cls_id_attacked=0, clear_imgs=None, with_bbox=True).cuda()
+                _, _, initialBoxes = detector.detect(input_imgs=images, cls_id_attacked=0, clear_imgs=None, with_bbox=True, conf_thresh=0.5) 
+                print(initialBoxes[0].shape)
+                # print(initialBoxes)
             # initialProb = torch.mean(torch.max(initialBoxes[:,:,4], 1).values)
             # print(f"Initial Probability: {initialProb}")
             gt = []
             preds = []
+            labels = []
             for i in range(images.shape[0]):
                 currentBox = initialBoxes[i]
-                if len(currentBox.shape) == 2:
-                    currentBox[currentBox[:,4]<=0.5] = img_size
-                    initialBoxes[i] = currentBox
-                    currentBox = currentBox[currentBox[:,4] < img_size]
-                    gt.append(dict(boxes=currentBox[:, :4],
-                    labels=torch.zeros(currentBox.shape[0])))
-                else:
-                    gt.append(dict(boxes=torch.tensor([]),
-                    labels=torch.tensor([])))
+                if model == "v3":
+                    currentBox = currentBox / img_size
+                gt.append(dict(boxes=currentBox[:, :4],
+                labels=torch.zeros(currentBox.shape[0])))
+                # Convert (x1,y1,x2,y2) to (x,y,w,h)
+                width = currentBox[:14,2] - currentBox[:14, 0]
+                width = torch.where((width == 0), 1, width)
+                height = currentBox[:14,3] - currentBox[:14, 1]
+                height = torch.where((height==0), 1, height)
+                center_x = currentBox[:14, 0] + width/2
+                center_y = currentBox[:14, 1] + height/2
+                label = torch.cat((currentBox[:14, 5].unsqueeze(1), center_x.unsqueeze(1), center_y.unsqueeze(1), width.unsqueeze(1), height.unsqueeze(1)), 1).cuda()
+                # print(label.shape)
+                labels.append(label)
 
-            # print(labels[0])
-            initialBoxes = initialBoxes / img_size
-            width = initialBoxes[:,:14,2] - initialBoxes[:, :14, 0]
-            width = torch.where((width == 0), 1, width)
-            height = initialBoxes[:,:14,3] - initialBoxes[:, :14, 1]
-            height = torch.where((height==0), 1, height)
-            center_x = initialBoxes[:, :14, 0] + width/2
-            center_y = initialBoxes[:, :14, 1] + height/2
-            labels = torch.cat((initialBoxes[:, :14, 5].unsqueeze(2), center_x.unsqueeze(2), center_y.unsqueeze(2), width.unsqueeze(2), height.unsqueeze(2)), 2).cuda()
             # print(labels[0])
 
             # Compute L_tv and L_sim
@@ -338,7 +339,7 @@ else:
             patch_o = patch
             if args.blur:
                 patch_o = blur(patch_o)
-            for i in range(labels.size(0)):
+            for i in range(len(labels)):
                 patch_t = patch_o
                 trans_prob = torch.rand([1])
                 # trans_prob = 1
@@ -364,7 +365,7 @@ else:
             if model == "v3":
                 boxes = detect.detect_image(yolo, advImages, conf_thres=0, classes=0, target=target_cls)
             else:
-                _, _, boxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True)
+                _, _, boxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True, conf_thresh=0)
 
             # print(boxes.shape)
             max_prob = torch.mean(torch.max(boxes[:,:,4], 1).values).cuda()

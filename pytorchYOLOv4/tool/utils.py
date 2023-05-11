@@ -174,6 +174,7 @@ def post_processing(img, conf_thresh, nms_thresh, output, show_detail=False, tar
     box_array = output[0]
     # confs,     [batch, num, num_classes], torch.Size([1, 22743, 80])
     confs = output[1]
+    max_det = 300
 
     t1 = time.time()
 
@@ -205,6 +206,15 @@ def post_processing(img, conf_thresh, nms_thresh, output, show_detail=False, tar
         l_max_conf = max_conf[i][argwhere]
         l_max_id = max_id[i][argwhere]
 
+        # print(l_box_array.shape)
+        # print(l_max_conf.shape)
+        # print(l_max_id.shape)
+
+        if l_box_array.shape[0] > max_det:
+            l_box_array = l_box_array[:300, :]
+            l_max_conf = l_max_conf[:300]
+            l_max_id = l_max_id[:300]
+
         bboxes = []
         # nms for each class
         for j in range(num_classes):
@@ -224,12 +234,17 @@ def post_processing(img, conf_thresh, nms_thresh, output, show_detail=False, tar
                 # print(ll_max_conf.shape)
                 # print(ll_max_id.shape)
 
-                bboxes = torch.cat([ll_box_array, ll_max_conf, ll_max_id], dim=1)
+                bboxes.append(torch.cat([ll_box_array, ll_max_conf, ll_max_id], dim=1))
+                # print(bboxes.shape)
                 # for k in range(ll_box_array.shape[0]):
                 #     bboxes.append([ll_box_array[k, 0], ll_box_array[k, 1], ll_box_array[k, 2], ll_box_array[k, 3], ll_max_conf[k], ll_max_id[k]])
+        bboxes = torch.cat(bboxes, dim = 0)
         bboxes_batch.append(bboxes)
 
-    output = torch.cat(bboxes_batch)
+    # print(len(bboxes_batch))
+    # print(bboxes_batch[0].shape)
+    # output = torch.cat(bboxes_batch, dim=0)
+    # print(output.shape)
     t3 = time.time()
 
     if(show_detail):
