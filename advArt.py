@@ -301,11 +301,13 @@ else:
             # labels = labels.cuda()
             if model == "v3":
                 initialBoxes = detect.detect_image(yolo, images, conf_thres=0.5, classes=0)
-                print(initialBoxes[0].shape)
+                # print(initialBoxes[0].shape)
+                # print(initialBoxes[0])
                 # print(initialBoxes)
             else:
                 _, _, initialBoxes = detector.detect(input_imgs=images, cls_id_attacked=0, clear_imgs=None, with_bbox=True, conf_thresh=0.5) 
-                print(initialBoxes[0].shape)
+                # print(initialBoxes[0].shape)
+                # print(initialBoxes[0])
                 # print(initialBoxes)
             # initialProb = torch.mean(torch.max(initialBoxes[:,:,4], 1).values)
             # print(f"Initial Probability: {initialProb}")
