@@ -21,10 +21,10 @@ random.seed(Seed)
 
 imgSize = 416
 batch_size = 8
-t = 1
+t = 50
 max_epoch = 1000
 a = 0.01
-experiment = "WithNoise"
+experiment = "WithNoiseT50"
 image_dir = f"images/{experiment}"
 lr = 0.005
 if not os.path.exists(image_dir):
@@ -79,7 +79,7 @@ writer = SummaryWriter(log_dir=f"natAdv_log/{experiment}", filename_suffix=exper
 dataset = inriaDataset("dataset/inria/Train/pos", "dataset/inria/Train/pos/yolo-labels_yolov3", imgSize, 15)
 train_size = int(len(dataset))
 train = torch.utils.data.Subset(dataset, list(range(train_size)))
-train_loader = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle=False, num_workers=2)
+train_loader = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=2)
 
 yolo = models.load_model("PyTorch_YOLOv3/config/yolov3.cfg", "PyTorch_YOLOv3/weights/yolov3.weights")
 
