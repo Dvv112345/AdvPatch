@@ -21,10 +21,10 @@ random.seed(Seed)
 
 imgSize = 416
 batch_size = 8
-t = 1
+t = 50
 max_epoch = 1000
 a = 0.01
-experiment = "WithNoise"
+experiment = "WithAllT50"
 image_dir = f"images/{experiment}"
 lr = 0.005
 if not os.path.exists(image_dir):
@@ -79,7 +79,7 @@ writer = SummaryWriter(log_dir=f"natAdv_log/{experiment}", filename_suffix=exper
 dataset = inriaDataset("dataset/inria/Train/pos", "dataset/inria/Train/pos/yolo-labels_yolov3", imgSize, 15)
 train_size = int(len(dataset))
 train = torch.utils.data.Subset(dataset, list(range(train_size)))
-train_loader = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle=False, num_workers=2)
+train_loader = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=2)
 
 yolo = models.load_model("PyTorch_YOLOv3/config/yolov3.cfg", "PyTorch_YOLOv3/weights/yolov3.weights")
 
@@ -94,20 +94,14 @@ for epoch in range(max_epoch):
     for images, labels in train_loader:
         images = images.cuda()
         labels = labels.cuda()
-        initialBoxes = detect.detect_image(yolo, images, conf_thres=0, classes=0).cuda()
-        initialProb = torch.mean(torch.max(initialBoxes[:,:,4], 1).values)
-        print(f"Probability before patching: {initialProb}")
+        initialBoxes = detect.detect_image(yolo, images, conf_thres=0.5, classes=0)
+        # initialProb = torch.mean(torch.max(initialBoxes[:,:,4], 1).values)
+        # print(f"Probability before patching: {initialProb}")
         gt = []
         preds = []
         for i in range(images.shape[0]):
             currentBox = initialBoxes[i]
-            if len(currentBox.shape) == 2:
-                currentBox = currentBox[currentBox[:,4]>0.5]
-                gt.append(dict(boxes=currentBox[:, :4],
-                labels=torch.zeros(currentBox.shape[0])))
-            else:
-                gt.append(dict(boxes=torch.tensor([]),
-                labels=torch.tensor([])))
+            gt.append(dict(boxes=currentBox[:, :4], labels=torch.zeros(currentBox.shape[0])))
         # Create a patch
         z.data = torch.clamp(z.data, min=-t, max=t)
         patch = G(z)
@@ -121,12 +115,14 @@ for epoch in range(max_epoch):
         #     for box in label:
         #         images[i] = combine(images[i], patch, box)
 
-        adv_batch, patch_set, _ = patch_transformer(adv_patch=patch, lab_batch=labels, img_size=imgSize, rand_loc=False, enable_blurred=False, with_crease=False, do_rotate=False, enable_no_random=False)
+        adv_batch, patch_set, _ = patch_transformer(adv_patch=patch, lab_batch=labels, img_size=imgSize, rand_loc=False, enable_blurred=False, with_crease=True, do_rotate=True, enable_no_random=False)
         images = patch_applier(images, adv_batch)
         boxes = detect.detect_image(yolo, images, conf_thres=0, classes=0)
-
+        L_det = torch.tensor(0)
         for i in range(images.shape[0]):
             currentBox = boxes[i]
+            max_prob = torch.max(currentBox[:, 4], 0).values
+            L_det = L_det + max_prob
             if len(currentBox.shape) == 2:
                 currentBox = currentBox[currentBox[:,4]>0.5]
                 preds.append(dict(boxes=currentBox[:, :4],
@@ -139,7 +135,7 @@ for epoch in range(max_epoch):
                 labels=torch.tensor([])))
         metric.update(preds, gt)
 
-        L_det = torch.mean(torch.max(boxes[:,:,4], 1).values)
+        L_det = L_det / images.shape[0]
         print(f"Detecton loss: {L_det}")
         L_tot = L_det + a*L_tv
         # L_tot = L_det
