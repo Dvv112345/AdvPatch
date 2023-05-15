@@ -246,7 +246,7 @@ def post_processing(img, conf_thresh, nms_thresh, output, show_detail=False, tar
                 # for k in range(ll_box_array.shape[0]):
                 #     bboxes.append([ll_box_array[k, 0], ll_box_array[k, 1], ll_box_array[k, 2], ll_box_array[k, 3], ll_max_conf[k], ll_max_id[k]])
         if len(bboxes) == 0:
-            bboxes.append(torch.tensor([[0,0,0,0,0,1]], dtype=torch.float32))
+            bboxes.append(torch.tensor([[0,0,0,0,0,0]], dtype=torch.float32))
 
         bboxes = torch.cat(bboxes, dim = 0)
         bboxes_batch.append(bboxes)
