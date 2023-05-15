@@ -91,6 +91,8 @@ def nms_cpu(boxes, confs, nms_thresh=0.5, min_mode=False):
 
         inds = torch.where(over <= nms_thresh)[0]
         order = order[inds + 1]
+    if len(keep) == 0:
+        return torch.zeros([0])
     return torch.cat(keep)
 
 
@@ -174,6 +176,8 @@ def post_processing(img, conf_thresh, nms_thresh, output, show_detail=False, tar
     box_array = output[0]
     # confs,     [batch, num, num_classes], torch.Size([1, 22743, 80])
     confs = output[1]
+    # print("Conf")
+    # print(confs)
     max_det = 300
 
     t1 = time.time()
@@ -225,6 +229,9 @@ def post_processing(img, conf_thresh, nms_thresh, output, show_detail=False, tar
             ll_max_conf = l_max_conf[cls_argwhere]
             ll_max_id = l_max_id[cls_argwhere]
 
+            # print("ll_max_conf")
+            # print(ll_max_conf)
+
             keep = nms_cpu(ll_box_array, ll_max_conf, nms_thresh)
             if (keep.shape[0] > 0):
                 ll_box_array = ll_box_array[keep, :]
@@ -238,6 +245,9 @@ def post_processing(img, conf_thresh, nms_thresh, output, show_detail=False, tar
                 # print(bboxes.shape)
                 # for k in range(ll_box_array.shape[0]):
                 #     bboxes.append([ll_box_array[k, 0], ll_box_array[k, 1], ll_box_array[k, 2], ll_box_array[k, 3], ll_max_conf[k], ll_max_id[k]])
+        if len(bboxes) == 0:
+            bboxes.append(torch.tensor([[0,0,0,0,0,1]], dtype=torch.float32))
+
         bboxes = torch.cat(bboxes, dim = 0)
         bboxes_batch.append(bboxes)
 
@@ -254,4 +264,6 @@ def post_processing(img, conf_thresh, nms_thresh, output, show_detail=False, tar
         print('Post processing total : %f' % (t3 - t1))
         print('-----------------------------------')
     
+    # print("bboxes_batch")
+    # print(bboxes_batch[0])
     return bboxes_batch

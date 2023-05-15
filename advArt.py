@@ -131,6 +131,8 @@ def getMask(patch, labels):
     mask = mask.view(flattenSize, maskShape[2], maskShape[3], maskShape[4])
     grid = F.affine_grid(theta, patch_batch.shape, align_corners=False)
     patch_t = F.grid_sample(patch_batch, grid, align_corners=False)
+    # print(mask.dtype)
+    # print(grid.dtype)
     mask_t = F.grid_sample(mask, grid, align_corners=False)
     patch_t = patch_t.view(maskShape)
     mask_t = mask_t.view(maskShape)
@@ -367,16 +369,24 @@ else:
             if model == "v3":
                 boxes = detect.detect_image(yolo, advImages, conf_thres=0, classes=0, target=target_cls)
             else:
-                _, _, boxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True, conf_thresh=0)
+                _, _, boxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True, conf_thresh=0.1)
+
+            prob = []
+            maxProb = torch.zeros(images.shape[0])
+            for i in range(images.shape[0]):
+                # print(i)
+                # print(boxes[i])
+                if target_cls is None:
+                    prob.append(boxes[i][:,4])
+                else:
+                    prob.append(boxes[i][:,6])
+                maxProb[i] = torch.max(boxes[i][:,4])
 
             # print(boxes.shape)
-            max_prob = torch.mean(torch.max(boxes[:,:,4], 1).values).cuda()
+            max_prob = torch.mean(maxProb).cuda()
             # max_prob_obj_cls, overlap_score, boxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True)
             # max_prob = torch.mean(max_prob_obj_cls)
-            if target_cls is None:
-                L_det = detect_loss(boxes[:,:,4], labels, piecewise=args.piecewise).cuda()
-            else:
-                L_det = detect_loss(boxes[:,:,6], labels, piecewise=args.piecewise).cuda()
+            L_det = detect_loss(prob, labels, piecewise=args.piecewise).cuda()
             # L_det = max_prob
             for i in range(images.shape[0]):
                 currentBox = boxes[i]

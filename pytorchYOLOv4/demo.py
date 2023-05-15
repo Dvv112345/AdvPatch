@@ -99,17 +99,19 @@ class DetectorYolov4():
                 # init MaxProbExtractor
                 self.max_prob_extractor = MaxProbExtractor()
         # 
-    def detect(self, input_imgs, cls_id_attacked, clear_imgs=None, with_bbox=True):
+    def detect(self, input_imgs, cls_id_attacked, clear_imgs=None, with_bbox=True, conf_thresh=0):
         # resize image
         # input_imgs_ori = input_imgs.clone() # np.save('gg', input_imgs_ori.cpu().detach().numpy())   
                                             #  gg=np.load('gg.npy')    gg2=input_imgs_ori.cpu().detach().numpy() np.argwhere(gg!=gg2)
         input_imgs        = F.interpolate(input_imgs, size=self.m.width).to(self.device)
         # bbox
         if(with_bbox):
-            boxes         = do_detect(self.m, input_imgs, 0.4, 0.6, use_cuda)
+            bbox         = do_detect(self.m, input_imgs, conf_thresh, 0.6, use_cuda, targetClass=cls_id_attacked)
             # print("boxes size : "+str(np.array(boxes).shape))
             # print("boxes      : "+str(boxes))
-            bbox          = [torch.Tensor(box) for box in boxes] ## [torch.Size([3, 7]), torch.Size([2, 7]), ...]
+            # bbox          = [torch.Tensor(box) for box in boxes] ## [torch.Size([3, 7]), torch.Size([2, 7]), ...]
+            # print("bbox")
+            # print(bbox[0])
         else:
             self.m.eval()
         # detections_tensor
@@ -176,7 +178,7 @@ def detect_cv2(cfgfile, weightfile, imgfile, output='predictions.jpg'):
 
     for i in range(2):
         start = time.time()
-        boxes = do_detect(m, sized, 0.4, 0.6, use_cuda)
+        boxes = do_detect(m, sized, 0.5, 0.6, use_cuda)
         finish = time.time()
         if i == 1:
             print('%s: Predicted in %f seconds.' % (imgfile, (finish - start)))
@@ -216,7 +218,7 @@ def detect_cv2_camera(cfgfile, weightfile):
         sized = cv2.cvtColor(sized, cv2.COLOR_BGR2RGB)
 
         start = time.time()
-        boxes = do_detect(m, sized, 0.4, 0.6, use_cuda)
+        boxes = do_detect(m, sized, 0.5, 0.6, use_cuda)
         finish = time.time()
         print('Predicted in %f seconds.' % (finish - start))
 
