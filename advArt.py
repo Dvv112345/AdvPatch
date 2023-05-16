@@ -317,7 +317,7 @@ else:
             preds = []
             labels = []
             for i in range(images.shape[0]):
-                currentBox = initialBoxes[i]
+                currentBox = initialBoxes[i].cuda()
                 if model == "v3":
                     currentBox = currentBox / img_size
                 gt.append(dict(boxes=currentBox[:, :4],
@@ -389,7 +389,7 @@ else:
             L_det = detect_loss(prob, labels, piecewise=args.piecewise).cuda()
             # L_det = max_prob
             for i in range(images.shape[0]):
-                currentBox = boxes[i]
+                currentBox = boxes[i].cuda()
                 if len(currentBox.shape) == 2:
                     currentBox = currentBox[currentBox[:,4]>0.5]
                     preds.append(dict(boxes=currentBox[:, :4],
