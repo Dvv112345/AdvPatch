@@ -27,13 +27,17 @@ def similiar(patch, target):
 
 
 def detect_loss(probabilities, labels, piecewise=None):
-    labels = labels[:,:,0]
-    ind = (labels[:,:]==0)
-    probabilities = probabilities[:,:14]
-    probabilities = probabilities[ind]
+    # print(probabilities)
+    result = torch.zeros(len(probabilities))
+    for i in range(len(probabilities)):
+        lab = labels[i][0]
+        lab = lab[lab==0]
+        current = probabilities[i][:lab.shape[0]]
+        result[i] = torch.mean(current)
     if piecewise is not None:
-        probabilities = torch.where((probabilities<piecewise), 0, probabilities)
-    L_det = torch.sum(probabilities) / probabilities.shape[0]
+        result = torch.where((result<piecewise), 0, probabilities)
+    # print(result)
+    L_det = torch.mean(result)
     return L_det
 
 
