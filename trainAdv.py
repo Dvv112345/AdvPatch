@@ -109,7 +109,7 @@ for epoch in range(max_epoch):
             if len(currentBox.shape) == 2 and currentBox.shape[0] != 0:
             	gt.append(dict(boxes=currentBox[:, :4], labels=torch.zeros(currentBox.shape[0]).cuda()))
             else:
-            	preds.append(dict(boxes=torch.tensor([[0,0,0,0]]).cuda(),labels=torch.tensor([0]).cuda()))
+            	gt.append(dict(boxes=torch.tensor([[0,0,0,0]]).cuda(),labels=torch.tensor([0]).cuda()))
         # Create a patch
         z.data = torch.clamp(z.data, min=-t, max=t)
         patch = G(z)
@@ -142,12 +142,12 @@ for epoch in range(max_epoch):
                 scores=torch.tensor([0]).cuda(),
                 labels=torch.tensor([0]).cuda()))
         metric.update(preds, gt)
-        print("gt")
-        print(gt)
-        print("preds")
-        print(preds)
-        mAP = metric.compute()
-        print("mAP: ", mAP["map"])
+        # print("gt")
+        # print(gt)
+        # print("preds")
+        # print(preds)
+        # mAP = metric.compute()
+        # print("mAP: ", mAP["map"])
 
         L_det = L_det / images.shape[0]
         print(f"Detecton loss: {L_det}")
