@@ -143,6 +143,8 @@ for epoch in range(max_epoch):
         print(len(gt))
         print("preds")
         print(len(preds))
+        mAP = metric.compute()
+        print("mAP: ", mAP["map"])
 
         L_det = L_det / images.shape[0]
         print(f"Detecton loss: {L_det}")
