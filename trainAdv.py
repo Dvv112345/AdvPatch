@@ -108,7 +108,7 @@ for epoch in range(max_epoch):
             currentBox = initialBoxes[i]
             if len(currentBox.shape) == 2 and currentBox.shape[0] != 0:
             	gt.append(dict(boxes=currentBox[:, :4], labels=torch.zeros(currentBox.shape[0]).cuda()))
-    	    else:
+            else:
             	preds.append(dict(boxes=torch.tensor([[0,0,0,0]]).cuda(),labels=torch.tensor([0]).cuda()))
         # Create a patch
         z.data = torch.clamp(z.data, min=-t, max=t)
