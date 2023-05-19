@@ -82,7 +82,7 @@ def wrinkles(patch):
         d = torch.cross(hxv, hmv)
         d = torch.abs(d[:, 2])
         wt = d / torch.linalg.norm(mv, ord=2)
-        wt = 1 - (wt / 100)**2
+        wt = 1 - wt**2/(W**2 + H**2)
         msmv = mv * wt.unsqueeze(1)
         perturbed_mesh = perturbed_mesh + msmv
 
