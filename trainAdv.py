@@ -24,7 +24,7 @@ batch_size = 8
 t = 50
 max_epoch = 1000
 a = 0.01
-experiment = "WithAllT50"
+experiment = "WithNoTransT50tiny"
 image_dir = f"images/{experiment}"
 lr = 0.005
 if not os.path.exists(image_dir):
