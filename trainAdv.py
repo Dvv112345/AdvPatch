@@ -21,12 +21,15 @@ random.seed(Seed)
 
 imgSize = 416
 batch_size = 8
-t = 50
+t = 100
 max_epoch = 1000
 a = 0.01
-experiment = "WithAllT50"
+experiment = "WithAllT100"
 image_dir = f"images/{experiment}"
 lr = 0.005
+rotate = True
+noise = True
+crease = True
 if not os.path.exists(image_dir):
     os.makedirs(image_dir)
 
@@ -115,7 +118,7 @@ for epoch in range(max_epoch):
         #     for box in label:
         #         images[i] = combine(images[i], patch, box)
 
-        adv_batch, patch_set, _ = patch_transformer(adv_patch=patch, lab_batch=labels, img_size=imgSize, rand_loc=False, enable_blurred=False, with_crease=True, do_rotate=True, enable_no_random=False)
+        adv_batch, patch_set, _ = patch_transformer(adv_patch=patch, lab_batch=labels, img_size=imgSize, rand_loc=False, enable_blurred=False, with_crease=crease, do_rotate=rotate, enable_no_random=(not noise))
         images = patch_applier(images, adv_batch)
         boxes = detect.detect_image(yolo, images, conf_thres=0, classes=0)
         L_det = torch.tensor(0)
