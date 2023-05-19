@@ -106,7 +106,10 @@ for epoch in range(max_epoch):
         preds = []
         for i in range(images.shape[0]):
             currentBox = initialBoxes[i]
-            gt.append(dict(boxes=currentBox[:, :4], labels=torch.zeros(currentBox.shape[0])))
+            if len(currentBox.shape) == 2 and currentBox.shape[0] != 0:
+            	gt.append(dict(boxes=currentBox[:, :4], labels=torch.zeros(currentBox.shape[0]).cuda()))
+    	    else:
+            	preds.append(dict(boxes=torch.tensor([[0,0,0,0]]).cuda(),labels=torch.tensor([0]).cuda()))
         # Create a patch
         z.data = torch.clamp(z.data, min=-t, max=t)
         patch = G(z)
@@ -128,21 +131,21 @@ for epoch in range(max_epoch):
             currentBox = boxes[i]
             max_prob = torch.max(currentBox[:, 4], 0).values
             L_det = L_det + max_prob
-            if len(currentBox.shape) == 2:
-                currentBox = currentBox[currentBox[:,4]>0.5]
+            currentBox = currentBox[currentBox[:,4]>0.5]
+            if len(currentBox.shape) == 2 and currentBox.shape[0] != 0:
                 preds.append(dict(boxes=currentBox[:, :4],
                 scores=currentBox[:, 4],
                 # scores=currentBox[:, 4]*currentBox[:, 5],
-                labels=torch.zeros(currentBox.shape[0])))
+                labels=torch.zeros(currentBox.shape[0]).cuda()))
             else:
-                preds.append(dict(boxes=torch.tensor([]),
-                scores=torch.tensor([]),
-                labels=torch.tensor([])))
+            	preds.append(dict(boxes=torch.tensor([[0,0,0,0]]).cuda(),
+                scores=torch.tensor([0]).cuda(),
+                labels=torch.tensor([0]).cuda()))
         metric.update(preds, gt)
         print("gt")
-        print(len(gt))
+        print(gt)
         print("preds")
-        print(len(preds))
+        print(preds)
         mAP = metric.compute()
         print("mAP: ", mAP["map"])
 
