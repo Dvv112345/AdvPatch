@@ -14,6 +14,7 @@ from inriaDataset import inriaDataset
 from PyTorch_YOLOv3.pytorchyolo import detect, models
 from advArt_util import smoothness, similiar, detect_loss, combine, perspective, wrinkles, rotate, noise, NPS, blur
 from pytorchYOLOv4.demo import DetectorYolov4
+from yolov7 import custom_detector
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--a", default=1, type=float)
@@ -74,6 +75,8 @@ with open(os.path.join(image_dir, "setting.txt"), 'w') as f:
 
 
 def getMask(patch, labels):
+    if labels.shape[1] == 0:
+        return torch.zeros([1, 0, 3, 416, 416]).cuda(), torch.zeros([1, 0, 3, 416, 416]).cuda()
     if patch.size(-1) > img_size:
         resize = transforms.Resize((img_size, img_size))
         patch = resize(patch)
@@ -136,6 +139,8 @@ def getMask(patch, labels):
     mask_t = F.grid_sample(mask, grid, align_corners=False)
     patch_t = patch_t.view(maskShape)
     mask_t = mask_t.view(maskShape)
+    # print(patch_t.shape)
+    # print(mask_t.shape)
     return patch_t, mask_t
 
 
@@ -185,9 +190,12 @@ if model == "v3":
         yolo = models.load_model("PyTorch_YOLOv3/config/yolov3-tiny.cfg", "PyTorch_YOLOv3/weights/yolov3-tiny.weights")
     else:
         yolo = models.load_model("PyTorch_YOLOv3/config/yolov3.cfg", "PyTorch_YOLOv3/weights/yolov3.weights")
-else:
-    print("Using YOLOv4")
-    detector = DetectorYolov4(show_detail=False, tiny=tiny)
+# elif model == "v4":
+#     print("Using YOLOv4")
+#     detector = DetectorYolov4(show_detail=False, tiny=tiny)
+elif model == "v7":
+    print("Using YOLOv7")
+    detector = custom_detector.Detector("yolov7/yolov7.pt")
 
 # Set the optimizer
 # optimizer = torch.optim.SGD([patch], lr=lr, momentum=0.9)
@@ -204,33 +212,35 @@ if eval:
             labels = labels.cuda()
             if model == "v3":
                 initialBoxes = detect.detect_image(yolo, images, conf_thres=0, classes=0).cuda()
-            else:
+            elif model == "v4":
                 _, _, initialBoxes = detector.detect(input_imgs=images, cls_id_attacked=0, clear_imgs=None, with_bbox=True).cuda()
+            elif model == "v7":
+                initialBoxes = detector.detect(images, conf_thres=0.5, classes=0)
             # initialProb = torch.mean(torch.max(initialBoxes[:,:,4], 1).values)
             # print(f"Initial Probability: {initialProb}")
             gt = []
             preds = []
+            labels = []
             for i in range(images.shape[0]):
-                currentBox = initialBoxes[i]
-                if len(currentBox.shape) == 2:
-                    currentBox[currentBox[:,4]<=0.5] = img_size
-                    initialBoxes[i] = currentBox
-                    currentBox = currentBox[currentBox[:,4] < img_size]
-                    gt.append(dict(boxes=currentBox[:, :4],
-                    labels=torch.zeros(currentBox.shape[0])))
-                else:
-                    gt.append(dict(boxes=torch.tensor([]),
-                    labels=torch.tensor([])))
-
-            # print(labels[0])
-            initialBoxes = initialBoxes / img_size
-            width = initialBoxes[:,:14,2] - initialBoxes[:, :14, 0]
-            width = torch.where((width == 0), 1, width)
-            height = initialBoxes[:,:14,3] - initialBoxes[:, :14, 1]
-            height = torch.where((height==0), 1, height)
-            center_x = initialBoxes[:, :14, 0] + width/2
-            center_y = initialBoxes[:, :14, 1] + height/2
-            labels = torch.cat((initialBoxes[:, :14, 5].unsqueeze(2), center_x.unsqueeze(2), center_y.unsqueeze(2), width.unsqueeze(2), height.unsqueeze(2)), 2).cuda()
+                currentBox = initialBoxes[i].cuda()
+                # print(currentBox)
+                gt.append(dict(boxes=currentBox[:, :4],
+                labels=torch.zeros(currentBox.shape[0])))
+                # if i == 0:
+                #     print("Initial:")
+                #     print(currentBox)
+                if model == "v3" or "v7":
+                    currentBox = currentBox / img_size
+                # Convert (x1,y1,x2,y2) to (x,y,w,h)
+                width = currentBox[:14,2] - currentBox[:14, 0]
+                width = torch.where((width == 0), 1, width)
+                height = currentBox[:14,3] - currentBox[:14, 1]
+                height = torch.where((height==0), 1, height)
+                center_x = currentBox[:14, 0] + width/2
+                center_y = currentBox[:14, 1] + height/2
+                label = torch.cat((currentBox[:14, 5].unsqueeze(1), center_x.unsqueeze(1), center_y.unsqueeze(1), width.unsqueeze(1), height.unsqueeze(1)), 1).cuda()
+                # print(label.shape)
+                labels.append(label)
 
             # Compute L_tv and L_sim
             L_tv = smoothness(patch)
@@ -256,18 +266,39 @@ if eval:
 
                 patch_batch, mask = getMask(patch_t, labels[i].unsqueeze(0))
                 advImages[i] = combine(images[i], patch_batch, mask)
-
+            
+            boxes = []
             if model == "v3":
-                boxes = detect.detect_image(yolo, advImages, conf_thres=0, classes=0)
-            else:
-                _, _, boxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True)
-            max_prob = torch.mean(torch.max(boxes[:,:,4], 1).values).cuda()
-            # L_det = detect_loss(boxes[:,:,4], labels).cuda()
-            L_det = max_prob
+                boxes = detect.detect_image(yolo, advImages, conf_thres=0, classes=0, target=target_cls)
+            elif model == "v4":
+                _, _, boxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True, conf_thresh=0)
+            elif model == "v7":
+                boxes = detector.detect(advImages, conf_thres=0, classes=0)
+
+            prob = []
+            maxProb = torch.zeros(images.shape[0])
             for i in range(images.shape[0]):
-                currentBox = boxes[i]
+                # print(i)
+                # print(boxes[i])
+                if target_cls is None:
+                    prob.append(boxes[i][:,4])
+                else:
+                    prob.append(boxes[i][:,6])
+                maxProb[i] = torch.max(boxes[i][:,4])
+
+            # print(boxes.shape)
+            max_prob = torch.mean(maxProb).cuda()
+
+            L_det = 0
+            L_det = detect_loss(prob, labels, piecewise=args.piecewise).cuda()
+            # L_det = max_prob
+            for i in range(images.shape[0]):
+                currentBox = boxes[i].cuda()
                 if len(currentBox.shape) == 2:
                     currentBox = currentBox[currentBox[:,4]>0.5]
+                    # if i == 0:
+                    #     print("Final:")
+                    #     print(currentBox)
                     preds.append(dict(boxes=currentBox[:, :4],
                     scores=currentBox[:, 4],
                     labels=torch.zeros(currentBox.shape[0])))
@@ -306,11 +337,16 @@ else:
                 # print(initialBoxes[0].shape)
                 # print(initialBoxes[0])
                 # print(initialBoxes)
-            else:
+            elif model == "v4":
                 _, _, initialBoxes = detector.detect(input_imgs=images, cls_id_attacked=0, clear_imgs=None, with_bbox=True, conf_thresh=0.5) 
                 # print(initialBoxes[0].shape)
                 # print(initialBoxes[0])
                 # print(initialBoxes)
+            elif model == "v7":
+                detector = custom_detector.Detector("yolov7/yolov7.pt")
+                initialBoxes = detector.detect(images, conf_thres=0.5, classes=0)
+                # print(initialBoxes[0].shape)
+                # print(initialBoxes[0])
             # initialProb = torch.mean(torch.max(initialBoxes[:,:,4], 1).values)
             # print(f"Initial Probability: {initialProb}")
             gt = []
@@ -318,10 +354,14 @@ else:
             labels = []
             for i in range(images.shape[0]):
                 currentBox = initialBoxes[i].cuda()
-                if model == "v3":
-                    currentBox = currentBox / img_size
+                # print(currentBox)
                 gt.append(dict(boxes=currentBox[:, :4],
                 labels=torch.zeros(currentBox.shape[0])))
+                # if i == 0:
+                #     print("Initial:")
+                #     print(currentBox)
+                if model == "v3" or "v7":
+                    currentBox = currentBox / img_size
                 # Convert (x1,y1,x2,y2) to (x,y,w,h)
                 width = currentBox[:14,2] - currentBox[:14, 0]
                 width = torch.where((width == 0), 1, width)
@@ -366,10 +406,13 @@ else:
                     path = os.path.join(image_dir, f"detailCombine_{counter}.png")
                     Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
 
+            boxes = []
             if model == "v3":
                 boxes = detect.detect_image(yolo, advImages, conf_thres=0, classes=0, target=target_cls)
-            else:
-                _, _, boxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True, conf_thresh=0.1)
+            elif model == "v4":
+                _, _, boxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True, conf_thresh=0)
+            elif model == "v7":
+                boxes = detector.detect(advImages, conf_thres=0, classes=0)
 
             prob = []
             maxProb = torch.zeros(images.shape[0])
@@ -386,12 +429,16 @@ else:
             max_prob = torch.mean(maxProb).cuda()
             # max_prob_obj_cls, overlap_score, boxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True)
             # max_prob = torch.mean(max_prob_obj_cls)
+            L_det = 0
             L_det = detect_loss(prob, labels, piecewise=args.piecewise).cuda()
             # L_det = max_prob
             for i in range(images.shape[0]):
                 currentBox = boxes[i].cuda()
                 if len(currentBox.shape) == 2:
                     currentBox = currentBox[currentBox[:,4]>0.5]
+                    # if i == 0:
+                    #     print("Final:")
+                    #     print(currentBox)
                     preds.append(dict(boxes=currentBox[:, :4],
                     scores=currentBox[:, 4],
                     labels=torch.zeros(currentBox.shape[0])))
@@ -400,6 +447,12 @@ else:
                     scores=torch.tensor([]),
                     labels=torch.tensor([])))
             metric.update(preds, gt)
+            # print("Preds:")
+            # print(preds)
+            # print("GT:")
+            # print(gt)
+            # mAP = metric.compute()
+            # print("mAP: ", mAP["map"])
 
             # Print the loss
             print(f"Detecton loss: {L_det}")
@@ -409,7 +462,7 @@ else:
             writer.add_scalar("Detection_Prob", max_prob, global_step=counter)
             lossTag = {"L_tot": L_tot, "L_det": L_det, "L_sim": L_sim, "L_tv": L_tv}
             writer.add_scalars("Loss", lossTag, counter)
-            # torch.autograd.set_detect_anomaly(True)
+            torch.autograd.set_detect_anomaly(True)
 
             # filter = torch.zeros(3, 3, 3, 3).cuda()
             # avg_filter = torch.ones(3,3) / 9
@@ -419,9 +472,8 @@ else:
 
             L_tot.backward()
             # patch.grad = F.conv2d(patch.grad, filter, padding="same")
-            # print(f"Patch gradient: {patch.grad}")
-            optimizer.step()
-            
+            # print(f"Patch gradient: {patch.grad} \n Sum : {torch.sum(patch.grad)}")
+            optimizer.step()            
             # patch.data = F.conv2d(patch.data, filter, padding="same")
             # print(patch.shape)
             patch.data = torch.clamp(patch.data, min=0, max=1)
