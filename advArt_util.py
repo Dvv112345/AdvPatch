@@ -30,7 +30,7 @@ def detect_loss(probabilities, labels, piecewise=None):
     # print(probabilities)
     result = torch.zeros(len(probabilities))
     for i in range(len(probabilities)):
-        lab = labels[i][0]
+        lab = labels[i][:,0]
         lab = lab[lab==0]
         current = probabilities[i][:lab.shape[0]]
         result[i] = torch.mean(current)
