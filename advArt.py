@@ -209,13 +209,22 @@ if eval:
     with torch.no_grad():
         for images, labels in train_loader:
             images = images.cuda()
-            labels = labels.cuda()
+            # labels = labels.cuda()
             if model == "v3":
-                initialBoxes = detect.detect_image(yolo, images, conf_thres=0, classes=0).cuda()
+                initialBoxes = detect.detect_image(yolo, images, conf_thres=0.5, classes=0)
+                # print(initialBoxes[0].shape)
+                # print(initialBoxes[0])
+                # print(initialBoxes)
             elif model == "v4":
-                _, _, initialBoxes = detector.detect(input_imgs=images, cls_id_attacked=0, clear_imgs=None, with_bbox=True).cuda()
+                _, _, initialBoxes = detector.detect(input_imgs=images, cls_id_attacked=0, clear_imgs=None, with_bbox=True, conf_thresh=0.5) 
+                # print(initialBoxes[0].shape)
+                # print(initialBoxes[0])
+                # print(initialBoxes)
             elif model == "v7":
+                detector = custom_detector.Detector("yolov7/yolov7.pt")
                 initialBoxes = detector.detect(images, conf_thres=0.5, classes=0)
+                # print(initialBoxes[0].shape)
+                # print(initialBoxes[0])
             # initialProb = torch.mean(torch.max(initialBoxes[:,:,4], 1).values)
             # print(f"Initial Probability: {initialProb}")
             gt = []
@@ -242,15 +251,17 @@ if eval:
                 # print(label.shape)
                 labels.append(label)
 
+            # print(labels[0])
+
             # Compute L_tv and L_sim
             L_tv = smoothness(patch)
             L_sim = similiar(patch, target)
-        
+            
             advImages = torch.zeros(images.shape).cuda()
             patch_o = patch
             if args.blur:
                 patch_o = blur(patch_o)
-            for i in range(labels.size(0)):
+            for i in range(len(labels)):
                 patch_t = patch_o
                 trans_prob = torch.rand([1])
                 # trans_prob = 1
@@ -266,7 +277,14 @@ if eval:
 
                 patch_batch, mask = getMask(patch_t, labels[i].unsqueeze(0))
                 advImages[i] = combine(images[i], patch_batch, mask)
-            
+
+            if args.saveDetail:
+                    path = os.path.join(image_dir, f"detail_{counter}.png")
+                    Image.fromarray((patch_t.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
+                    path = os.path.join(image_dir, f"detailCombine_{counter}.png")
+                    Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
+
+
             boxes = []
             if model == "v3":
                 boxes = detect.detect_image(yolo, advImages, conf_thres=0, classes=0, target=target_cls)
@@ -288,7 +306,8 @@ if eval:
 
             # print(boxes.shape)
             max_prob = torch.mean(maxProb).cuda()
-
+            # max_prob_obj_cls, overlap_score, boxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True)
+            # max_prob = torch.mean(max_prob_obj_cls)
             L_det = 0
             L_det = detect_loss(prob, labels, piecewise=args.piecewise).cuda()
             # L_det = max_prob
@@ -307,13 +326,13 @@ if eval:
                     scores=torch.tensor([]),
                     labels=torch.tensor([])))
             metric.update(preds, gt)
-
-            if args.saveDetail:
-                path = os.path.join(image_dir, f"detail_{counter}.png")
-                Image.fromarray((patch_t.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
-                path = os.path.join(image_dir, f"detailCombine_{counter}.png")
-                Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
-
+            # print("Preds:")
+            # print(preds)
+            # print("GT:")
+            # print(gt)
+            # mAP = metric.compute()
+            # print("mAP: ", mAP["map"])
+            
             # Print the loss
             print(f"Detecton loss: {L_det}")
         
