@@ -6,6 +6,7 @@ import os
 import random
 from torch.utils.tensorboard import SummaryWriter
 import torch.nn.functional as F
+import torchvision
 from PIL import Image
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
 import argparse
@@ -196,6 +197,10 @@ if model == "v3":
 elif model == "v7":
     print("Using YOLOv7")
     detector = custom_detector.Detector("yolov7/yolov7.pt")
+elif model == "faster":
+    print("Using Faster-RCNN")
+    detector = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights="DEFAULT").cuda()
+    detector.eval()
 
 # Set the optimizer
 # optimizer = torch.optim.SGD([patch], lr=lr, momentum=0.9)
@@ -279,12 +284,10 @@ if eval:
                 advImages[i] = combine(images[i], patch_batch, mask)
 
             if args.saveDetail:
-                    path = os.path.join(image_dir, f"detail_{counter}.png")
-                    Image.fromarray((patch_t.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
-                    path = os.path.join(image_dir, f"detailCombine_{counter}.png")
-                    Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
-
-
+                path = os.path.join(image_dir, f"detail_{counter}.png")
+                Image.fromarray((patch_t.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
+                path = os.path.join(image_dir, f"detailCombine_{counter}.png")
+                Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
             boxes = []
             if model == "v3":
                 boxes = detect.detect_image(yolo, advImages, conf_thres=0, classes=0, target=target_cls)
@@ -337,8 +340,6 @@ if eval:
             print(f"Detecton loss: {L_det}")
         
             torch.cuda.empty_cache()
-            combine_path = os.path.join(image_dir, f"combine_{counter}.png")
-            Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(combine_path)
             counter += 1
         mAP = metric.compute()
         print("mAP: ", mAP["map"])
@@ -366,8 +367,17 @@ else:
                 initialBoxes = detector.detect(images, conf_thres=0.5, classes=0)
                 # print(initialBoxes[0].shape)
                 # print(initialBoxes[0])
+            elif model == "faster":
+                initialBoxes = detector(images)
+                for i in range(len(initialBoxes)):
+                    initialBoxes[i] = torch.cat([initialBoxes[i]["boxes"], initialBoxes[i]["scores"].unsqueeze(1), initialBoxes[i]["labels"].unsqueeze(1)], dim=1)
+                    initialBoxes[i] = initialBoxes[i][initialBoxes[i][:,5] == 1]
+                    initialBoxes[i] = initialBoxes[i][initialBoxes[i][:,4] >= 0.5]
+                    # path = os.path.join(image_dir, f"detail_{i}.png")
+                    # Image.fromarray((images[i].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
             # initialProb = torch.mean(torch.max(initialBoxes[:,:,4], 1).values)
             # print(f"Initial Probability: {initialProb}")
+            # print(initialBoxes[0])
             gt = []
             preds = []
             labels = []
@@ -379,7 +389,7 @@ else:
                 # if i == 0:
                 #     print("Initial:")
                 #     print(currentBox)
-                if model == "v3" or "v7":
+                if model == "v3" or "v7" or "faster":
                     currentBox = currentBox / img_size
                 # Convert (x1,y1,x2,y2) to (x,y,w,h)
                 width = currentBox[:14,2] - currentBox[:14, 0]
@@ -424,7 +434,6 @@ else:
                     Image.fromarray((patch_t.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
                     path = os.path.join(image_dir, f"detailCombine_{counter}.png")
                     Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
-
             boxes = []
             if model == "v3":
                 boxes = detect.detect_image(yolo, advImages, conf_thres=0, classes=0, target=target_cls)
@@ -432,24 +441,35 @@ else:
                 _, _, boxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True, conf_thresh=0)
             elif model == "v7":
                 boxes = detector.detect(advImages, conf_thres=0, classes=0)
-
+            elif model == "faster":
+                boxes = detector(advImages)
+                for i in range(len(boxes)):
+                    boxes[i] = torch.cat([boxes[i]["boxes"], boxes[i]["scores"].unsqueeze(1), boxes[i]["labels"].unsqueeze(1)], dim=1)
+                    boxes[i] = boxes[i][boxes[i][:,5] == 1]
+            # print(boxes[0])
             prob = []
             maxProb = torch.zeros(images.shape[0])
             for i in range(images.shape[0]):
                 # print(i)
-                # print(boxes[i])
                 if target_cls is None:
-                    prob.append(boxes[i][:,4])
+                    if boxes[i][:, 4].shape[0] == 0:
+                        prob.append(torch.tensor([0]))
+                    else:
+                        prob.append(boxes[i][:,4])
                 else:
                     prob.append(boxes[i][:,6])
-                maxProb[i] = torch.max(boxes[i][:,4])
-
+                if boxes[i][:, 4].shape[0] == 0:
+                    maxProb[i] = torch.tensor(0)
+                else:
+                    maxProb[i] = torch.max(boxes[i][:,4])
+                # print(maxProb[i])
             # print(boxes.shape)
             max_prob = torch.mean(maxProb).cuda()
             # max_prob_obj_cls, overlap_score, boxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True)
             # max_prob = torch.mean(max_prob_obj_cls)
             L_det = 0
             L_det = detect_loss(prob, labels, piecewise=args.piecewise).cuda()
+            # print(L_det)
             # L_det = max_prob
             for i in range(images.shape[0]):
                 currentBox = boxes[i].cuda()
@@ -467,9 +487,9 @@ else:
                     labels=torch.tensor([])))
             metric.update(preds, gt)
             # print("Preds:")
-            # print(preds)
+            # print(preds[0])
             # print("GT:")
-            # print(gt)
+            # print(gt[0])
             # mAP = metric.compute()
             # print("mAP: ", mAP["map"])
 

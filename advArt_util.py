@@ -31,12 +31,11 @@ def detect_loss(probabilities, labels, piecewise=None):
     result = torch.zeros(len(probabilities))
     for i in range(len(probabilities)):
         lab = labels[i][:,0]
-        lab = lab[lab==0]
+        # lab = lab[lab==0]
         current = probabilities[i][:lab.shape[0]]
         result[i] = torch.mean(current)
     if piecewise is not None:
         result = torch.where((result<piecewise), 0, probabilities)
-    # print(result)
     L_det = torch.mean(result)
     return L_det
 
@@ -67,14 +66,14 @@ def wrinkles(patch):
     grid = grid.view(2,-1)  # torch.Size([2, H*W])
     grid = grid.permute(1,0)  # torch.Size([H*W, 2])
     perturbed_mesh = grid
-    for k in range(10):
+    for k in range(15):
         # Choosing one vertex randomly
         vidx = torch.randint(grid.shape[0],(1,))
         vtex = grid[vidx, :]
         # Vector between all vertices and the selected one
         xv  = perturbed_mesh - vtex
         # Random movement 
-        mv = (torch.rand(1,2).cuda() - 0.5)*5
+        mv = (torch.rand(1,2).cuda() - 0.5)*20
         hxv = torch.zeros(xv.size(0), xv.size(1)+1).cuda()
         hxv[:, :-1] = xv
         mv_r3 = torch.cat((mv, torch.tensor([[0]]).cuda()), 1)
