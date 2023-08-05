@@ -453,13 +453,13 @@ else:
                 # print(i)
                 if target_cls is None:
                     if boxes[i][:, 4].shape[0] == 0:
-                        prob.append(torch.tensor([0]))
+                        prob.append(torch.tensor([0]).float())
                     else:
                         prob.append(boxes[i][:,4])
                 else:
                     prob.append(boxes[i][:,6])
                 if boxes[i][:, 4].shape[0] == 0:
-                    maxProb[i] = torch.tensor(0)
+                    maxProb[i] = torch.tensor(0).float()
                 else:
                     maxProb[i] = torch.max(boxes[i][:,4])
                 # print(maxProb[i])
