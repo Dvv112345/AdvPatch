@@ -26,7 +26,7 @@ def similiar(patch, target):
     return L_sim
 
 
-def detect_loss(probabilities, labels, piecewise=None):
+def detect_loss(probabilities, labels, piecewise=0):
     # print(probabilities)
     result = torch.zeros(len(probabilities))
     for i in range(len(probabilities)):
@@ -34,7 +34,7 @@ def detect_loss(probabilities, labels, piecewise=None):
         # lab = lab[lab==0]
         current = probabilities[i][:lab.shape[0]]
         result[i] = torch.mean(current)
-    if piecewise is not None:
+    if piecewise != 0:
         result = torch.where((result<piecewise), 0, probabilities)
     L_det = torch.mean(result)
     return L_det
@@ -143,3 +143,65 @@ def blur(patch):
         filter[i,i] = avg_filter
     result = F.conv2d(patch, filter, padding="same")
     return result
+
+def getMask(patch, labels, img_size, patch_size):
+    if labels.shape[1] == 0:
+        return torch.zeros([1, 0, 3, 416, 416]).cuda(), torch.zeros([1, 0, 3, 416, 416]).cuda()
+    if patch.size(-1) > img_size:
+        resize = transforms.Resize((img_size, img_size))
+        patch = resize(patch)
+    # Make a batch of patch
+    patch_batch = patch.expand(labels.size(0), labels.size(1), -1, -1, -1)
+    # print(patch_batch.shape)
+
+    # Create mask
+    clsId = torch.narrow(labels, 2, 0, 1)
+    # print(clsId.shape)
+    clsId.data = torch.clamp(clsId.data, min=0, max=1)
+    clsMask = clsId.unsqueeze(-1)
+    clsMask = clsMask.unsqueeze(-1)
+    clsMask = clsMask.expand(-1, -1, patch_batch.size(-3), patch_batch.size(-2), patch_batch.size(-1))
+    # print(clsMask.shape)
+    mask = torch.cuda.FloatTensor(clsMask.size()).fill_(1) - clsMask
+    # print(mask.shape)
+    padW = (img_size - mask.size(-1)) / 2
+    padH = (img_size - mask.size(-2)) / 2
+    mypad = torch.nn.ConstantPad2d((int(padW), int(padW), int(padH), int(padH)), 0)
+    patch_batch = mypad(patch_batch)
+    mask = mypad(mask)
+    # print(mask.shape)
+
+    flattenSize = labels.size(0) * labels.size(1)
+
+    lab_scaled = labels * img_size
+    smallSide = torch.where(lab_scaled[:,:,3] < lab_scaled[:,:, 4], lab_scaled[:,:,3], lab_scaled[:,:, 4])
+    target_size = smallSide.mul(patch_size)
+    batch_max = torch.max(target_size).detach().cpu().item()
+    batch_min = torch.min(target_size).detach().cpu().item()
+    # target_size = torch.sqrt(((lab_scaled[:, :, 3].mul(patch_size)) ** 2) + ((lab_scaled[:, :, 4].mul(patch_size)) ** 2))
+    target_x = labels[:, :, 1].view(flattenSize)
+    target_y = (labels[:, :, 2]- 0.1*labels[:, :, 4]).view(flattenSize)
+    tx = (1-2*target_x)
+    ty = (1-2*target_y)
+
+    # print(target_size.shape)
+    scale = patch.size(-1)/target_size
+    scale = scale.view(flattenSize)
+    theta = torch.cuda.FloatTensor(flattenSize, 2, 3).fill_(0)
+    theta[:, 0, 0] = scale
+    theta[:, 0, 2] = tx * scale
+    theta[:, 1, 1] = scale
+    theta[:, 1, 2] = ty * scale
+    maskShape = mask.shape
+    patch_batch = patch_batch.view(flattenSize, maskShape[2], maskShape[3], maskShape[4])
+    mask = mask.view(flattenSize, maskShape[2], maskShape[3], maskShape[4])
+    grid = F.affine_grid(theta, patch_batch.shape, align_corners=False)
+    patch_t = F.grid_sample(patch_batch, grid, align_corners=False)
+    # print(mask.dtype)
+    # print(grid.dtype)
+    mask_t = F.grid_sample(mask, grid, align_corners=False)
+    patch_t = patch_t.view(maskShape)
+    mask_t = mask_t.view(maskShape)
+    # print(patch_t.shape)
+    # print(mask_t.shape)
+    return patch_t, mask_t

@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block body %}
+<h1>Set the hyperparameters for training</h1>
+<form action="/run" method="post" enctype="multipart/form-data">
+    <div class="container">
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="exp">Experiment name: </label>
+            </div>
+            <div class="col-5">
+                <input type="text" id="exp" name="exp_s" value="test" required>
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="eval">Run evaluation, not training: </label>
+            </div>
+            <div class="col-5">
+                <input type="checkbox" id="eval" name="eval_b" value="true">
+                <input type="hidden" name="eval_b" value="false" />
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="a">Weight for detection loss function: </label>
+            </div>
+            <div class="col-5">
+                <input type="number" id="a" name="a_f" value="1" required>
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="b">Weight for total variation loss function: </label>
+            </div>
+            <div class="col-5">
+                <input type="number" id="b" name="b_f" value="0.5" required>
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="c">Weight for total similarity function: </label>
+            </div>
+            <div class="col-5">
+                <input type="number" id="c" name="c_f" value="1" required>
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="lr">Learning rate: </label>
+            </div>
+            <div class="col-5">
+                <input type="number" id="lr" name="lr_f" value="0.01" required>
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="epoch">Maximum epoch: </label>
+            </div>
+            <div class="col-5">
+                <input type="number" id="epoch" name="epoch_i" value="10000" required>
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="batch">Batch size: </label>
+            </div>
+            <div class="col-5">
+                <input type="number" id="batch" name="batch_i" value="8" required>
+            </div>
+        </div>    
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="resize">Size of the patch (in pixels): </label>
+            </div>
+            <div class="col-5">
+                <input type="number" id="resize" name="resize_i" value="400" required>
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="patchSize">Size of the patch relative to bounding box: </label>
+            </div>
+            <div class="col-5">
+                <input type="number" id="patchSize" name="patchSize_f" value="0.5" required>
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="targetClass">Target class (only for YOLOv3, -1 means None): </label>
+            </div>
+            <div class="col-5">
+                <input type="number" id="targetClass" name="targetClass_i" value="-1" required>
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="target">Target image: </label>
+            </div>
+            <div class="col-5">
+                <input type="file" id="target" name="target_u" required>
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="imgSize">Size of target image (in pixels): </label>
+            </div>
+            <div class="col-5">
+                <input type="number" id="imgSize" name="imgSize_i" value="416" required>
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="resume">Start from a patch: </label>
+            </div>
+            <div class="col-5">
+                <input type="file" id="resume" name="resume_u">
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="dataset">Path of the dataset: </label>
+            </div>
+            <div class="col-5">
+                <input type="text" id="dataset" name="dataset_s" value="dataset/inria/Train/pos" required>
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="label">Path of the labels: </label>
+            </div>
+            <div class="col-5">
+                <input type="text" id="label" name="label_s" value="dataset/inria/Train/pos/yolo-labels_yolov4" required>
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="model">Detector model to target: </label>
+            </div>
+            <div class="col-5">
+                <select id="model" name="model_s" required>
+                    <option value="v3">YOLOv3</option>
+                    <option value="v7">YOLOv7</option>
+                    <option value="faster">Faster-RCNN</option>
+                </select>
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="tiny">Use tiny configuration (only for YOLOv3): </label>
+            </div>
+            <div class="col-5">
+                <input type="checkbox" id="tiny" name="tiny_b" value="true">
+                <input type="hidden" name="tiny_b" value="false" />
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="imageFilter">Filter dateset so bounding boxes are at least a given proportion of the image (0 - 1): </label>
+            </div>
+            <div class="col-5">
+                <input type="number" id="imageFilter" name="imageFilter_f" value="0" min="0" max="1" step="0.1" required>
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="piecewise">Piecewise threshold for detection loss function: </label>
+            </div>
+            <div class="col-5">
+                <input type="number" id="piecewise" name="piecewise_f" value="0" required>
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="noise">Use noise transformation: </label>
+            </div>
+            <div class="col-5">
+                <input type="checkbox" id="noise" name="noise_b" value="true">
+                <input type="hidden" name="noise_b" value="false" />
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="rotate">Use rotate transformation: </label>
+            </div>
+            <div class="col-5">
+                <input type="checkbox" id="rotate" name="rotate_b" value="true">
+                <input type="hidden" name="rotate_b" value="false" />
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="blur">Use blur transformation: </label>
+            </div>
+            <div class="col-5">
+                <input type="checkbox" id="blur" name="blur_b" value="true">
+                <input type="hidden" name="blur_b" value="false" />
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="persp">Use perspective transformation: </label>
+            </div>
+            <div class="col-5">
+                <input type="checkbox" id="persp" name="persp_b" value="true">
+                <input type="hidden" name="persp_b" value="false" />
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="wrinkle">Use wrinkle transformation: </label>
+            </div>
+            <div class="col-5">
+                <input type="checkbox" id="wrinkle" name="wrinkle_b" value="true">
+                <input type="hidden" name="wrinkle_b" value="false" />
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="startImage">Patch start as the target image: </label>
+            </div>
+            <div class="col-5">
+                <input type="checkbox" id="startImage" name="startImage_b" value="true">
+                <input type="hidden" name="startImage_b" value="false"/>
+            </div>
+        </div>      
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="saveDetail"> Save image per batch: </label>
+            </div>
+            <div class="col-5">
+                <input type="checkbox" id="saveDetail" name="saveDetail_b" value="true">
+                <input type="hidden" name="saveDetail_b" value="false"/>
+            </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="note">Note: </label>
+            </div>
+            <div class="col-5">
+                <input type="text" id="note" name="note_s" value="">
+            </div>
+        </div>         
+
+        <br>
+        <div class="row p-1">
+            <div class="col-5">
+            </div>
+            <div class="col-5">
+                <input type="submit" value="Run" class="m-auto">
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}

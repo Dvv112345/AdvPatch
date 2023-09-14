@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block head %}
+<meta http-equiv="refresh" content="20">
+{% endblock %}
+
+{% block body %}
+{% block heading %}
+<h1>{{name}} is running</h1>
+{% if eval != True %}
+<h3>{{epoch}} epoch has been completed. (Updates every 10 epoch)</h3>
+{% endif %}
+<a href={{tbURL}}  target="_blank"> Tensorboard</a>
+<br>
+<form action="/close" method="post">
+    <input type="submit" value = "End">
+</form>
+<br>
+{% endblock %}
+
+{% for name in patches %}
+    <div class="row">
+        <div class="col-6">
+            <img src="{{ url_for('patch', filename=name) }}">
+        </div>
+        <div class="col-6">
+            <img src="{{ url_for('combine', filename=name) }}">
+        </div>
+    </div>
+{% endfor %}
+{% endblock %}
