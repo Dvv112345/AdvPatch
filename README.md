@@ -1,2 +1,2 @@
 # AdvPatch
-Use python app.py to lauch the interface
+Use <em>python app.py<em> to lauch the interface
