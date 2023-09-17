@@ -33,9 +33,9 @@ def detect_loss(probabilities, labels, piecewise=0):
         lab = labels[i][:,0]
         # lab = lab[lab==0]
         current = probabilities[i][:lab.shape[0]]
+        if piecewise != 0:
+            current = torch.where((current<piecewise), 0, current)
         result[i] = torch.mean(current)
-    if piecewise != 0:
-        result = torch.where((result<piecewise), 0, probabilities)
     L_det = torch.mean(result)
     return L_det
 

@@ -22,7 +22,8 @@ def getImages():
             if os.path.isfile(os.path.join(imgPath, name)):
                 imgCount += 1
                 patches.append(name)
-        epoch = (imgCount-1) *10 + 1
+        if imgCount != 0:
+            epoch = (imgCount-1) *10 + 1
     return epoch,imgCount,patches
 
 @app.route("/")
@@ -104,9 +105,10 @@ def combine(filename):
 
 @app.route("/close", methods=["POST", "GET"])
 def close():
-    session["process"].terminate()
+    if session.get("process"):
+        session["process"].terminate()
     mAP = ''
-    if session["eval"]:
+    if session.get("eval"):
         file = open(os.path.join("artImg", session["exp"], "result.txt"), 'r')
         mAP = file.read()
     _, imgCount, patches = getImages()

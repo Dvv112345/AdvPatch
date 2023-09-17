@@ -26,7 +26,7 @@
                 <label for="a">Weight for detection loss function: </label>
             </div>
             <div class="col-5">
-                <input type="number" id="a" name="a_f" value="1" required>
+                <input type="number" id="a" name="a_f" value="1" step="any" required>
             </div>
         </div>
         <div class="row p-1">
@@ -34,7 +34,7 @@
                 <label for="b">Weight for total variation loss function: </label>
             </div>
             <div class="col-5">
-                <input type="number" id="b" name="b_f" value="0.5" required>
+                <input type="number" id="b" name="b_f" value="0.5" step="any" required>
             </div>
         </div>
         <div class="row p-1">
@@ -42,7 +42,7 @@
                 <label for="c">Weight for total similarity function: </label>
             </div>
             <div class="col-5">
-                <input type="number" id="c" name="c_f" value="1" required>
+                <input type="number" id="c" name="c_f" value="1" step="any" required>
             </div>
         </div>
         <div class="row p-1">
@@ -50,7 +50,7 @@
                 <label for="lr">Learning rate: </label>
             </div>
             <div class="col-5">
-                <input type="number" id="lr" name="lr_f" value="0.01" required>
+                <input type="number" id="lr" name="lr_f" value="0.001" step="any" required>
             </div>
         </div>
         <div class="row p-1">
@@ -58,7 +58,7 @@
                 <label for="epoch">Maximum epoch: </label>
             </div>
             <div class="col-5">
-                <input type="number" id="epoch" name="epoch_i" value="10000" required>
+                <input type="number" id="epoch" name="epoch_i" value="10000" step="1" required>
             </div>
         </div>
         <div class="row p-1">
@@ -66,7 +66,7 @@
                 <label for="batch">Batch size: </label>
             </div>
             <div class="col-5">
-                <input type="number" id="batch" name="batch_i" value="8" required>
+                <input type="number" id="batch" name="batch_i" value="8" step="1" required>
             </div>
         </div>    
         <div class="row p-1">
@@ -74,7 +74,7 @@
                 <label for="resize">Size of the patch (in pixels): </label>
             </div>
             <div class="col-5">
-                <input type="number" id="resize" name="resize_i" value="400" required>
+                <input type="number" id="resize" name="resize_i" value="400" step="1" required>
             </div>
         </div>
         <div class="row p-1">
@@ -82,7 +82,7 @@
                 <label for="patchSize">Size of the patch relative to bounding box: </label>
             </div>
             <div class="col-5">
-                <input type="number" id="patchSize" name="patchSize_f" value="0.5" required>
+                <input type="number" id="patchSize" name="patchSize_f" value="0.5" step="any" required>
             </div>
         </div>
         <div class="row p-1">
@@ -90,7 +90,7 @@
                 <label for="targetClass">Target class (only for YOLOv3, -1 means None): </label>
             </div>
             <div class="col-5">
-                <input type="number" id="targetClass" name="targetClass_i" value="-1" required>
+                <input type="number" id="targetClass" name="targetClass_i" value="-1" step="1" required>
             </div>
         </div>
         <div class="row p-1">
@@ -106,7 +106,7 @@
                 <label for="imgSize">Size of target image (in pixels): </label>
             </div>
             <div class="col-5">
-                <input type="number" id="imgSize" name="imgSize_i" value="416" required>
+                <input type="number" id="imgSize" name="imgSize_i" value="416" step="1" required>
             </div>
         </div>
         <div class="row p-1">
@@ -159,7 +159,7 @@
                 <label for="imageFilter">Filter dateset so bounding boxes are at least a given proportion of the image (0 - 1): </label>
             </div>
             <div class="col-5">
-                <input type="number" id="imageFilter" name="imageFilter_f" value="0" min="0" max="1" step="0.1" required>
+                <input type="number" id="imageFilter" name="imageFilter_f" value="0" min="0" max="1" step="any" required>
             </div>
         </div>
         <div class="row p-1">
@@ -167,7 +167,7 @@
                 <label for="piecewise">Piecewise threshold for detection loss function: </label>
             </div>
             <div class="col-5">
-                <input type="number" id="piecewise" name="piecewise_f" value="0" required>
+                <input type="number" id="piecewise" name="piecewise_f" value="0" step="any" required>
             </div>
         </div>
         <div class="row p-1">
