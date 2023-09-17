@@ -21,11 +21,11 @@
 {% for name in patches %}
     <div class="row">
         <div class="col-2"></div>
-        <div class="col-4">
+        <div class="col-3">
             <img src="{{ url_for('patch', filename=name) }}">
         </div>
-        <div class="col-2"></div>
-        <div class="col-4">
+        <div class="col-2 text-center">{{name}}</div>
+        <div class="col-3">
             <img src="{{ url_for('combine', filename=name) }}">
         </div>
         <div class="col-2"></div>
