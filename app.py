@@ -5,12 +5,29 @@ import os
 from werkzeug.utils import secure_filename
 from multiprocessing import Process
 from tensorboard import program
+import socket
+
+
+def availablePorts():
+    for port in range(5000, 8081):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            res = sock.connect_ex(('127.0.0.1', port))
+            if res != 0:
+                sock.close()
+                return port
+            
 
 app = Flask(__name__)
 app.secret_key="secret"
 app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
 session = {}
 session["tb"] = False
+
+def sortName(fileName):
+    if session["eval"]:
+        return int(fileName[7:-4])
+    else:
+        return int(fileName[:-4])
 
 def getImages():
     imgPath = os.path.join("artImg", session["exp"], "patch")
@@ -24,6 +41,7 @@ def getImages():
                 patches.append(name)
         if imgCount != 0:
             epoch = (imgCount-1) *10 + 1
+    patches.sort(key=sortName, reverse=True)
     return epoch,imgCount,patches
 
 @app.route("/")
@@ -76,6 +94,7 @@ def run():
     # Train the patch async
     session["exp"] = args["exp"]
     session["eval"] = args["eval"]
+    session["detail"] = args["saveDetail"]
     training = Process(target=trainPatch, args=(args,))
     training.start()
     session["process"] = training
@@ -85,7 +104,8 @@ def run():
 def running():
     if session["tb"] == False:
         tb = program.TensorBoard()
-        tb.configure(argv=[None, '--logdir', "advArt_log", "--port", "8008"])
+        port = availablePorts()
+        tb.configure(argv=[None, '--logdir', "advArt_log", "--port", str(port)])
         session["tb"] = tb.launch()
     if session["process"].is_alive() == False:
         return redirect("/close")
@@ -117,4 +137,5 @@ def close():
 
 
 if __name__ == "__main__":
-    app.run("127.0.0.1", 5005, debug=True)
+    port = availablePorts()
+    app.run("127.0.0.1", port, debug=True)

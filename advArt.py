@@ -359,10 +359,10 @@ def trainPatch(args):
                     advImages[i] = combine(images[i], patch_batch, mask)
 
                 if args["saveDetail"]:
-                        path = os.path.join(image_dir, f"detail_{counter}.png")
-                        Image.fromarray((patch_t.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
-                        path = os.path.join(image_dir, f"detailCombine_{counter}.png")
-                        Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
+                    path = os.path.join(patch_path, f"detail_{counter}.png")
+                    Image.fromarray((patch_t.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
+                    path = os.path.join(combine_path, f"detail_{counter}.png")
+                    Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
                 
                 boxes = []
                 if model == "v3":
