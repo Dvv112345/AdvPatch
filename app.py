@@ -7,6 +7,44 @@ from multiprocessing import Process
 from tensorboard import program
 import socket
 
+            
+
+app = Flask(__name__)
+app.secret_key="secret"
+app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
+session = {}
+session["tb"] = False
+args = {}
+descriptions = {
+    "exp": "Experiment name: ",
+    "eval": "Run evaluation, not training: ",
+    "a": "Weight for detection loss function: ",
+    "b": "Weight for total variation loss function: ",
+    "c": "Weight for total similarity function: ",
+    "lr": "Learning rate: ",
+    "epoch": "Maximum epoch: ",
+    "batch": "Batch size: ",
+    "resize": "Size of the patch (in pixels): ",
+    "patchSize": "Size of the patch relative to bounding box: ",
+    "targetClass": "Target class (only for YOLOv3, -1 means None): ",
+    "target": "Target image: ",
+    "imgSize": "Size of target image (in pixels): ",
+    "resume": "Start from a patch: ",
+    "dataset": "Path of the dataset: ",
+    "label": "Path of the labels: ",
+    "model": "Detector model to target: ",
+    "tiny": "Use tiny configuration (only for YOLOv3): ",
+    "imageFilter": "Filter dateset so bounding boxes are at least a given proportion of the image (0 - 1): ",
+    "piecewise": "Piecewise threshold for detection loss function: ",
+    "noise": "Use noise transformation: ",
+    "rotate": "Use rotate transformation: ",
+    "blur": "Use blur transformation: ",
+    "persp": "Use perspective transformation: ",
+    "wrinkle": "Use wrinkle transformation: ",
+    "startImage": "Patch start as the target image: ",
+    "saveDetail": "Save image per batch: ",
+    "note": "Note: "
+}
 
 def availablePorts():
     for port in range(5000, 8081):
@@ -15,22 +53,15 @@ def availablePorts():
             if res != 0:
                 sock.close()
                 return port
-            
-
-app = Flask(__name__)
-app.secret_key="secret"
-app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
-session = {}
-session["tb"] = False
 
 def sortName(fileName):
-    if session["eval"]:
+    if args["saveDetail"]:
         return int(fileName[7:-4])
     else:
         return int(fileName[:-4])
 
 def getImages():
-    imgPath = os.path.join("artImg", session["exp"], "patch")
+    imgPath = os.path.join("artImg", args["exp"], "patch")
     epoch = 0
     imgCount = 0
     patches = []
@@ -51,7 +82,6 @@ def configuration():
 @app.route("/run", methods=["POST"])
 def run():
     form = request.form
-    args = {}
     # print(request.files)
     target = request.files["target_u"]
     target_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(target.filename))
@@ -92,9 +122,6 @@ def run():
         # Suffix _u for file upload
     # print(args)
     # Train the patch async
-    session["exp"] = args["exp"]
-    session["eval"] = args["eval"]
-    session["detail"] = args["saveDetail"]
     training = Process(target=trainPatch, args=(args,))
     training.start()
     session["process"] = training
@@ -110,17 +137,17 @@ def running():
     if session["process"].is_alive() == False:
         return redirect("/close")
     epoch, imgCount, patches = getImages()
-    return render_template("running.html", tbURL=session["tb"], name=session["exp"], patches=patches, epoch=epoch, imgCount=imgCount, eval=session["eval"])
+    return render_template("running.html", tbURL=session["tb"], name=args["exp"], patches=patches, epoch=epoch, imgCount=imgCount, eval=args["eval"], args=args, descriptions=descriptions)
 
 
 @app.route("/patch/<path:filename>")
 def patch(filename):
-    imgPath = os.path.join("artImg", session["exp"], "patch")
+    imgPath = os.path.join("artImg", args["exp"], "patch")
     return send_from_directory(imgPath, filename)
 
 @app.route("/combine/<path:filename>")
 def combine(filename):
-    imgPath = os.path.join("artImg", session["exp"], "combine")
+    imgPath = os.path.join("artImg", args["exp"], "combine")
     return send_from_directory(imgPath, filename)
 
 @app.route("/close", methods=["POST", "GET"])
@@ -128,11 +155,11 @@ def close():
     if session.get("process"):
         session["process"].terminate()
     mAP = ''
-    if session.get("eval"):
-        file = open(os.path.join("artImg", session["exp"], "result.txt"), 'r')
+    if args.get("eval"):
+        file = open(os.path.join("artImg", args["exp"], "result.txt"), 'r')
         mAP = file.read()
     _, imgCount, patches = getImages()
-    return render_template("close.html", mAP=mAP, tbURL=session["tb"], name=session["exp"], patches=patches, imgCount=imgCount, eval=session["eval"])
+    return render_template("close.html", mAP=mAP, tbURL=session["tb"], name=args["exp"], patches=patches, imgCount=imgCount, eval=args["eval"], args=args, descriptions=descriptions)
 
 
 

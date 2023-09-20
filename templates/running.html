@@ -18,6 +18,19 @@
 <br>
 {% endblock %}
 
+{% for property in args %}
+<div class="row">
+    <div class="col-2"></div>
+    <div class="col-3">
+        {{descriptions[property]}}
+    </div>
+    <div class="col-2"></div>
+    <div class="col-3">
+        {{args[property]}}
+    </div>
+</div>
+{% endfor %}
+
 {% for name in patches %}
     <div class="row">
         <div class="col-2"></div>
