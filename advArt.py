@@ -41,6 +41,11 @@ def trainPatch(args):
     datasetPath = args["dataset"]
     labelPath = args["label"]
     minBox = args["imageFilter"]
+    region = args.get("region")
+    regionX1 = args.get("regionX1")
+    regionX2 = args.get("regionX2")
+    regionY1 = args.get("regionY1")
+    regionY2 = args.get("regionY2")
     if not os.path.exists(image_dir):
         os.makedirs(image_dir)
     else:
@@ -116,7 +121,16 @@ def trainPatch(args):
 
     # Set the optimizer
     # optimizer = torch.optim.SGD([patch], lr=lr, momentum=0.9)
-    optimizer = torch.optim.Adam([patch], lr=lr, amsgrad=True)
+    if region:
+        region = patch[:, regionY1:regionY2, regionX1:regionX2].clone()
+        region.requires_grad_(True)
+        patch[:, regionY1:regionY2, regionX1:regionX2] = 0
+        path = os.path.join(image_dir, f"region.png")
+        Image.fromarray((patch.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
+        patch[:, regionY1:regionY2, regionX1:regionX2] = region
+        optimizer = torch.optim.Adam([region], lr=lr, amsgrad=True)
+    else:
+        optimizer = torch.optim.Adam([patch], lr=lr, amsgrad=True)
 
 
     counter = 0
@@ -488,5 +502,10 @@ if __name__ == "__main__":
     parser.add_argument("--note", default="")
     parser.add_argument("--resume", default=None)
     parser.add_argument("--imgSize", default = 416, type=int)
+    parser.add_argument("--region", action='store_true')
+    parser.add_argument("--regionX1", default = 0, type=int)
+    parser.add_argument("--regionX2", default = 0, type=int)
+    parser.add_argument("--regionY1", default = 0, type=int)
+    parser.add_argument("--regionY2", default = 0, type=int)
     args = parser.parse_args()
     trainPatch(vars(args))

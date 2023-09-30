@@ -165,4 +165,4 @@ def close():
 
 if __name__ == "__main__":
     port = availablePorts()
-    app.run("127.0.0.1", port, debug=True)
+    app.run("127.0.0.1", port, debug=False)
