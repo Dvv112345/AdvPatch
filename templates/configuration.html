@@ -4,6 +4,53 @@
 <h1>Set the hyperparameters for training</h1>
 <form action="/run" method="post" enctype="multipart/form-data">
     <div class="container">
+    {% for property in descriptions %}
+        <div class="row p-1">
+            <div class="col-5">
+                <label for="{{property}}">{{descriptions[property][0]}}</label>
+            </div>
+        {% if descriptions[property][1] == "s" %}
+            <div class="col-5">
+                <input type="text" id="{{property}}" name="{{property}}_s" value="{{descriptions[property][2]}}" required>
+            </div>
+        {% elif descriptions[property][1] == "i" %}
+            <div class="col-5">
+                <input type="number" id="{{property}}" name="{{property}}_i" value="{{descriptions[property][2]}}" step="1" required>
+            </div>
+        {% elif descriptions[property][1] == "f" %}
+            <div class="col-5">
+                <input type="number" id="{{property}}" name="{{property}}_f" value="{{descriptions[property][2]}}" step="any" required>
+            </div>
+        {% elif descriptions[property][1] == "b" %}
+            <div class="col-5">
+                <input type="checkbox" id="{{property}}" name="{{property}}_b" value="true">
+                <input type="hidden" name="{{property}}_b" value="false" />
+            </div>
+        {% elif descriptions[property][1] == "u" %}
+            <div class="col-5">
+                <input type="file" id="{{property}}" name="{{property}}_u">
+            </div>
+        {% elif descriptions[property][1] == "o" %}
+            <div class="col-5">
+                <select id="{{property}}" name="{{property}}_{{descriptions[property][3]}}" required>
+                    {% for key in descriptions[property][2] %}
+                        <option value="{{key}}">{{descriptions[property][2][key]}}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        {% endif %}
+        </div>
+    {% endfor %}
+        <br>
+        <div class="row p-1">
+            <div class="col-5">
+            </div>
+            <div class="col-5">
+                <input type="submit" value="Run" class="m-auto">
+            </div>
+        </div>
+    </div>
+    <!-- <div class="container">
         <div class="row p-1">
             <div class="col-5">
                 <label for="exp">Experiment name: </label>
@@ -250,6 +297,6 @@
                 <input type="submit" value="Run" class="m-auto">
             </div>
         </div>
-    </div>
+    </div> -->
 </form>
 {% endblock %}

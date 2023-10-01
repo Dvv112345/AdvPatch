@@ -20,12 +20,12 @@
 
 {% for property in args %}
 <div class="row">
-    <div class="col-2"></div>
-    <div class="col-3">
-        {{descriptions[property]}}
+    <div class="col-1"></div>
+    <div class="col-6">
+        {{descriptions[property][0]}}
     </div>
-    <div class="col-2"></div>
-    <div class="col-3">
+    
+    <div class="col-5">
         {{args[property]}}
     </div>
 </div>

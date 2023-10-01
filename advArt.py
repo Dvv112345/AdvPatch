@@ -76,12 +76,10 @@ def trainPatch(args):
         patch = transform(patch)
         patch = resize(patch)
         patch = patch.cuda()
-    elif startImage or eval:
+    elif startImage or eval or region:
         patch = target.detach()
     else:
         patch = torch.rand(target.shape, device='cuda')
-
-    patch.requires_grad_(True)
 
     path = os.path.join(image_dir, f"initial.png")
     Image.fromarray((patch.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
@@ -120,22 +118,21 @@ def trainPatch(args):
         detector.eval()
 
     # Set the optimizer
-    # optimizer = torch.optim.SGD([patch], lr=lr, momentum=0.9)
+    # If only modifying part of the image, make the optimizer target just that part.
+    counter = 0
+    metric = MeanAveragePrecision()     
     if region:
-        region = patch[:, regionY1:regionY2, regionX1:regionX2].clone()
-        region.requires_grad_(True)
+        region_temp = patch[:, regionY1:regionY2, regionX1:regionX2].clone()
+        region_temp.requires_grad_(True)
         patch[:, regionY1:regionY2, regionX1:regionX2] = 0
         path = os.path.join(image_dir, f"region.png")
         Image.fromarray((patch.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
-        patch[:, regionY1:regionY2, regionX1:regionX2] = region
-        optimizer = torch.optim.Adam([region], lr=lr, amsgrad=True)
+        patch[:, regionY1:regionY2, regionX1:regionX2] = region_temp
+        optimizer = torch.optim.Adam([region_temp], lr=lr, amsgrad=True)   
     else:
+        patch.requires_grad_(True)
         optimizer = torch.optim.Adam([patch], lr=lr, amsgrad=True)
-
-
-    counter = 0
-    metric = MeanAveragePrecision()
-
+    
     if eval:
         with torch.no_grad():
             for images, labels in train_loader:
@@ -293,6 +290,7 @@ def trainPatch(args):
         for epoch in range(max_epoch):
             print(f"Epoch {epoch}")
             for images, labels in train_loader:
+                #     optimizer = torch.optim.Adam([patch_temp], lr=lr, amsgrad=True)
                 images = images.cuda()
                 # labels = labels.cuda()
                 if model == "v3":
@@ -416,7 +414,7 @@ def trainPatch(args):
                 # print(L_det)
                 # L_det = max_prob
                 for i in range(images.shape[0]):
-                    currentBox = boxes[i].cuda()
+                    currentBox = boxes[i]
                     if len(currentBox.shape) == 2:
                         currentBox = currentBox[currentBox[:,4]>0.5]
                         # if i == 0:
@@ -445,7 +443,7 @@ def trainPatch(args):
                 writer.add_scalar("Detection_Prob", max_prob, global_step=counter)
                 lossTag = {"L_tot": L_tot, "L_det": L_det, "L_sim": L_sim, "L_tv": L_tv}
                 writer.add_scalars("Loss", lossTag, counter)
-                torch.autograd.set_detect_anomaly(True)
+                # torch.autograd.set_detect_anomaly(True)
 
                 # filter = torch.zeros(3, 3, 3, 3).cuda()
                 # avg_filter = torch.ones(3,3) / 9
@@ -455,11 +453,16 @@ def trainPatch(args):
 
                 L_tot.backward()
                 # patch.grad = F.conv2d(patch.grad, filter, padding="same")
-                # print(f"Patch gradient: {patch.grad} \n Sum : {torch.sum(patch.grad)}")
-                optimizer.step()            
+                # print(f"Patch gradient sum: {torch.sum(patch.grad)}")
+                # print(f"Patch gradient sum (region): {torch.sum(torch.abs(region_temp.grad))}")
+                optimizer.step()
+                patch = patch.detach()
+                if region:
+                    patch[:, regionY1:regionY2, regionX1:regionX2] = region_temp
                 # patch.data = F.conv2d(patch.data, filter, padding="same")
                 # print(patch.shape)
                 patch.data = torch.clamp(patch.data, min=0, max=1)
+                # print(f"Sum of change: {torch.sum(torch.abs(patch.data - target.data))}")
                 optimizer.zero_grad()
                 torch.cuda.empty_cache()
                 counter += 1

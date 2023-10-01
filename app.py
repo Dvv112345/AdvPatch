@@ -16,34 +16,39 @@ session = {}
 session["tb"] = False
 args = {}
 descriptions = {
-    "exp": "Experiment name: ",
-    "eval": "Run evaluation, not training: ",
-    "a": "Weight for detection loss function: ",
-    "b": "Weight for total variation loss function: ",
-    "c": "Weight for total similarity function: ",
-    "lr": "Learning rate: ",
-    "epoch": "Maximum epoch: ",
-    "batch": "Batch size: ",
-    "resize": "Size of the patch (in pixels): ",
-    "patchSize": "Size of the patch relative to bounding box: ",
-    "targetClass": "Target class (only for YOLOv3, -1 means None): ",
-    "target": "Target image: ",
-    "imgSize": "Size of target image (in pixels): ",
-    "resume": "Start from a patch: ",
-    "dataset": "Path of the dataset: ",
-    "label": "Path of the labels: ",
-    "model": "Detector model to target: ",
-    "tiny": "Use tiny configuration (only for YOLOv3): ",
-    "imageFilter": "Filter dateset so bounding boxes are at least a given proportion of the image (0 - 1): ",
-    "piecewise": "Piecewise threshold for detection loss function: ",
-    "noise": "Use noise transformation: ",
-    "rotate": "Use rotate transformation: ",
-    "blur": "Use blur transformation: ",
-    "persp": "Use perspective transformation: ",
-    "wrinkle": "Use wrinkle transformation: ",
-    "startImage": "Patch start as the target image: ",
-    "saveDetail": "Save image per batch: ",
-    "note": "Note: "
+    "exp": ["Experiment name: ", "s", "test"],
+    "eval": ["Run evaluation, not training: ", "b", "False"],
+    "a": ["Weight for detection loss function: ", "f", "1"],
+    "b": ["Weight for total variation loss function: ", "f", "0.5"],
+    "c": ["Weight for total similarity function: ", "f", "1"],
+    "lr": ["Learning rate: ", "f", "0.001"],
+    "epoch": ["Maximum epoch: ", "i", "100000"],
+    "batch": ["Batch size: ", "i", "8"],
+    "resize": ["Size of the patch (in pixels): ", "i", "400"],
+    "patchSize": ["Size of the patch relative to bounding box: ", "f", "0.6"],
+    "targetClass": ["Target class (only for YOLOv3, -1 means None): ", "i", "-1"],
+    "target": ["Target image: ", "u", "None"],
+    "imgSize": ["Size of target image (in pixels): ", "i", "416"],
+    "resume": ["Start from a patch: ", "u", "None"],
+    "dataset": ["Path of the dataset: ", "s", "dataset/inria/Train/pos"],
+    "label": ["Path of the labels: ", "s", "dataset/inria/Train/pos/yolo-labels_yolov4"],
+    "model": ["Detector model to target: ", "o", {"v3": "YOLOv3", "v7": "YOLOv7", "faster": "Faster-RCNN"}, "s"],
+    "tiny": ["Use tiny configuration (only for YOLOv3): ", "b", "False"],
+    "imageFilter": ["Filter dateset so bounding boxes are at least a given proportion of the image (0 - 1): ", "f", "0.1"],
+    "piecewise": ["Piecewise threshold for detection loss function (0 - 1): ", "f", "0"],
+    "startImage": ["Patch start as the target image: ", "b", "False"],
+    "saveDetail": ["Save image per batch: ", "b", "False"],
+    "noise": ["Use noise transformation: ", "b", "False"],
+    "rotate": ["Use rotate transformation: ", "b", "False"],
+    "wrinkle": ["Use wrinkle transformation: ", "b", "False"],
+    "blur": ["Use blur transformation: ", "b", "False"],
+    "persp": ["Use perspective transformation: ", "b", "False"],
+    "region": ["Only modify part of the patch: ", "b", "False"],
+    "regionX1": ["Left edge of the region to be modified in pixels from the left edge of the patch: ", "i", "0"],
+    "regionX2": ["Right edge of the region to be modified in pixels from the left edge of the patch: ", "i", "0"],
+    "regionY1": ["Top edge of the region to be modified in pixels from the top edge of the patch: ", "i", "0"],
+    "regionY2": ["Bottom edge of the region to be modified in pixels from the top edge of the patch: ", "i", "0"],
+    "note": ["Note: ", "s", "NA"]
 }
 
 def availablePorts():
@@ -77,7 +82,7 @@ def getImages():
 
 @app.route("/")
 def configuration():
-    return render_template("configuration.html")
+    return render_template("configuration.html", descriptions=descriptions)
 
 @app.route("/run", methods=["POST"])
 def run():
