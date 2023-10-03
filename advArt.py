@@ -453,16 +453,18 @@ def trainPatch(args):
 
                 L_tot.backward()
                 # patch.grad = F.conv2d(patch.grad, filter, padding="same")
-                # print(f"Patch gradient sum: {torch.sum(patch.grad)}")
-                # print(f"Patch gradient sum (region): {torch.sum(torch.abs(region_temp.grad))}")
                 optimizer.step()
-                patch = patch.detach()
                 if region:
+                    print(f"Patch gradient sum (region): {torch.sum(torch.abs(region_temp.grad))}")
+                    patch = patch.detach()
                     patch[:, regionY1:regionY2, regionX1:regionX2] = region_temp
+                else:
+                    print(f"Patch gradient sum: {torch.sum(patch.grad)}")
                 # patch.data = F.conv2d(patch.data, filter, padding="same")
                 # print(patch.shape)
                 patch.data = torch.clamp(patch.data, min=0, max=1)
-                # print(f"Sum of change: {torch.sum(torch.abs(patch.data - target.data))}")
+                # patch.requires_grad_(True)
+                print(f"Sum of change: {torch.sum(torch.abs(patch.data - target.data))}")
                 optimizer.zero_grad()
                 torch.cuda.empty_cache()
                 counter += 1
