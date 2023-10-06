@@ -371,9 +371,9 @@ def trainPatch(args):
                     advImages[i] = combine(images[i], patch_batch, mask)
 
                 if args["saveDetail"]:
-                    path = os.path.join(patch_path, f"detail_{counter}.png")
+                    path = os.path.join(patch_path, f"detail_epoch{epoch}_{counter}.png")
                     Image.fromarray((patch_t.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
-                    path = os.path.join(combine_path, f"detail_{counter}.png")
+                    path = os.path.join(combine_path, f"detail_epoch{epoch}_{counter}.png")
                     Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
                 
                 boxes = []
@@ -473,7 +473,7 @@ def trainPatch(args):
             writer.add_scalar("mAP", mAP["map"], global_step=epoch)
             print("mAP: ", mAP["map"])
             metric.reset()
-            if epoch % 10 == 0 or epoch == max_epoch - 1:
+            if not args["saveDetail"] and (epoch % 10 == 0 or epoch == max_epoch - 1):
                 Image.fromarray((patch.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(os.path.join(patch_path, f"{epoch}.png"))
                 Image.fromarray((advImages[0].cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(os.path.join(combine_path, f"{epoch}.png"))
 

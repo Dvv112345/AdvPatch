@@ -60,10 +60,11 @@ def availablePorts():
                 return port
 
 def sortName(fileName):
-    if args["saveDetail"]:
-        return int(fileName[7:-4])
-    else:
-        return int(fileName[:-4])
+    return str(len(fileName)) + fileName
+    # if args["saveDetail"]:
+    #     return int(fileName[7:-4])
+    # else:
+    #     return int(fileName[:-4])
 
 def getImages():
     imgPath = os.path.join("artImg", args["exp"], "patch")
