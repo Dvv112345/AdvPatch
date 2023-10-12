@@ -18,9 +18,10 @@ def smoothness(patch):
     return tv/torch.numel(patch)
 
 
-def similiar(patch, target):
+def similar(patch, target, weight):
     # Compute L_sim
     sim = torch.abs(torch.flatten(patch, 1) - torch.flatten(target, 1)) 
+    sim = sim.mul(torch.flatten(weight, 1))
     sim = torch.linalg.norm(sim, ord=2, dim=0)
     L_sim = torch.mean(sim)*torch.mean(sim)
     return L_sim

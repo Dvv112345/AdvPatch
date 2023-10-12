@@ -13,7 +13,7 @@ import argparse
 
 from inriaDataset import inriaDataset
 from PyTorch_YOLOv3.pytorchyolo import detect, models
-from advArt_util import smoothness, similiar, detect_loss, combine, perspective, wrinkles, rotate, noise, blur, getMask
+from advArt_util import smoothness, similar, detect_loss, combine, perspective, wrinkles, rotate, noise, blur, getMask
 from pytorchYOLOv4.demo import DetectorYolov4
 from yolov7 import custom_detector
 
@@ -46,6 +46,11 @@ def trainPatch(args):
     regionX2 = args.get("regionX2")
     regionY1 = args.get("regionY1")
     regionY2 = args.get("regionY2")
+    sim_weight = args.get("simWeight")
+    simX1 = args.get("simX1")
+    simX2 = args.get("simX2")
+    simY1 = args.get("simY1")
+    simY2 = args.get("simY2")
     if not os.path.exists(image_dir):
         os.makedirs(image_dir)
     else:
@@ -83,6 +88,15 @@ def trainPatch(args):
 
     path = os.path.join(image_dir, f"initial.png")
     Image.fromarray((patch.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
+    # Create a weight matrix for similarity loss function
+    sim_weight_tensor = torch.ones_like(patch)
+    if sim_weight >= 0:
+        target_temp = target.clone()
+        target_temp[:, simY1:simY2, simX1:simX2] = 0
+        path = os.path.join(image_dir, "simWeight.png")
+        Image.fromarray((target_temp.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
+        del target_temp
+        sim_weight_tensor[:, simY1:simY2, simX1:simX2] = sim_weight
 
     # Set tensorboard
     if not eval:
@@ -125,7 +139,7 @@ def trainPatch(args):
         region_temp = patch[:, regionY1:regionY2, regionX1:regionX2].clone()
         region_temp.requires_grad_(True)
         patch[:, regionY1:regionY2, regionX1:regionX2] = 0
-        path = os.path.join(image_dir, f"region.png")
+        path = os.path.join(image_dir, "region.png")
         Image.fromarray((patch.cpu().detach().numpy().transpose(1,2,0)* 255).astype(np.uint8)).save(path)
         patch[:, regionY1:regionY2, regionX1:regionX2] = region_temp
         optimizer = torch.optim.Adam([region_temp], lr=lr, amsgrad=True)   
@@ -189,7 +203,7 @@ def trainPatch(args):
 
                 # Compute L_tv and L_sim
                 L_tv = smoothness(patch)
-                L_sim = similiar(patch, target)
+                L_sim = similar(patch, target, sim_weight_tensor)
                 
                 advImages = torch.zeros(images.shape).cuda()
                 patch_o = patch
@@ -198,7 +212,7 @@ def trainPatch(args):
                 for i in range(len(labels)):
                     patch_t = patch_o
                     trans_prob = torch.rand([1])
-                    trans_prob = 1
+                    # trans_prob = 1
                     if args["noise"]:
                         patch_t = noise(patch_t)
                     if trans_prob > 0.6:
@@ -278,7 +292,9 @@ def trainPatch(args):
                 
                 # Print the loss
                 print(f"Detecton loss: {L_det}")
-            
+                print(f"Similarity loss: {L_sim}")
+                print(f"Smoothness loss: {L_tv}")
+
                 torch.cuda.empty_cache()
                 counter += 1
             mAP = metric.compute()
@@ -347,7 +363,7 @@ def trainPatch(args):
 
                 # Compute L_tv and L_sim
                 L_tv = smoothness(patch)
-                L_sim = similiar(patch, target)
+                L_sim = similar(patch, target, sim_weight_tensor)
                 
                 advImages = torch.zeros(images.shape).cuda()
                 patch_o = patch
@@ -512,5 +528,10 @@ if __name__ == "__main__":
     parser.add_argument("--regionX2", default = 0, type=int)
     parser.add_argument("--regionY1", default = 0, type=int)
     parser.add_argument("--regionY2", default = 0, type=int)
+    parser.add_argument("--simWeight", default = -1, type=int)
+    parser.add_argument("--simX1", default = 0, type=int)
+    parser.add_argument("--simX2", default = 0, type=int)
+    parser.add_argument("--simY1", default = 0, type=int)
+    parser.add_argument("--simY2", default = 0, type=int)
     args = parser.parse_args()
     trainPatch(vars(args))

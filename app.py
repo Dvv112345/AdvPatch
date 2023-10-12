@@ -48,6 +48,11 @@ descriptions = {
     "regionX2": ["Right edge of the region to be modified in pixels from the left edge of the patch: ", "i", "0"],
     "regionY1": ["Top edge of the region to be modified in pixels from the top edge of the patch: ", "i", "0"],
     "regionY2": ["Bottom edge of the region to be modified in pixels from the top edge of the patch: ", "i", "0"],
+    "simWeight": ["Assign a weight to a region for the similarity loss function (-1 means off): ", "i", "-1"],
+    "simX1": ["Left edge of the region of similarity weight from the left edge of the patch: ", "i", "0"],
+    "simX2": ["Right edge of the region of similarity weight from the left edge of the patch: ", "i", "0"],
+    "simY1": ["Top edge of the region of similarity weight from the top edge of the patch: ", "i", "0"],
+    "simY2": ["Bottom edge of the region of similarity weight from the top edge of the patch: ", "i", "0"],
     "note": ["Note: ", "s", "NA"]
 }
 

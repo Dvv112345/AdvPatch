@@ -27,9 +27,15 @@
                 <input type="hidden" name="{{property}}_b" value="false" />
             </div>
         {% elif descriptions[property][1] == "u" %}
+            {% if property == "target" %}
+            <div class="col-5">
+                <input type="file" id="{{property}}" name="{{property}}_u" required>
+            </div>
+            {% else %}
             <div class="col-5">
                 <input type="file" id="{{property}}" name="{{property}}_u">
             </div>
+            {% endif %}
         {% elif descriptions[property][1] == "o" %}
             <div class="col-5">
                 <select id="{{property}}" name="{{property}}_{{descriptions[property][3]}}" required>
