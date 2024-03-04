@@ -1,6 +1,7 @@
 import torch
 from torchvision import transforms
 import torch.nn.functional as F
+from PIL import Image
 
 def smoothness(patch):
     # Compute L_tv
@@ -107,10 +108,10 @@ def wrinkles(patch):
     return patch_t
 
 
-def rotate(patch, targetResize):
+def rotate(patch, patchSize):
     angle = torch.cuda.FloatTensor(1).uniform_(-10, 10).item()
     result = transforms.functional.rotate(patch, angle, expand=True)
-    resize = transforms.Resize((targetResize, targetResize))
+    resize = transforms.Resize(patchSize)
     result = resize(result)
     return result
 
@@ -206,3 +207,9 @@ def getMask(patch, labels, img_size, patch_size):
     # print(patch_t.shape)
     # print(mask_t.shape)
     return patch_t, mask_t
+
+def saveImage(image, path):
+    image = image.clamp(0, 1).squeeze()
+    image = (image.permute(1, 2, 0) * 255).to(torch.uint8).cpu().numpy()
+    image = Image.fromarray(image)
+    image.save(path)

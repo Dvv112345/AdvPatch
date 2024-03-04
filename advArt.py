@@ -51,6 +51,8 @@ def trainPatch(args):
     simX2 = args.get("simX2")
     simY1 = args.get("simY1")
     simY2 = args.get("simY2")
+
+    # Set up directory for storing the result
     if not os.path.exists(image_dir):
         os.makedirs(image_dir)
     else:
@@ -75,6 +77,8 @@ def trainPatch(args):
     if targetResize > 0:
         resize = transforms.Resize((targetResize, targetResize))
         target = resize(target)
+    else:
+        targetResize = target.shape[1]
     print(target.shape)
     if resume is not None:
         patch = Image.open(resume).convert('RGB')
@@ -103,7 +107,6 @@ def trainPatch(args):
         writer = SummaryWriter(log_dir=f"advArt_log/{experiment}", filename_suffix=experiment)
 
     # Load the dataset for training
-
     dataset = inriaDataset(datasetPath, labelPath, img_size, 14, minBox=minBox)
     train_size = int(len(dataset))
     print("Size of dataset: ", len(dataset))
@@ -217,7 +220,7 @@ def trainPatch(args):
                         patch_t = noise(patch_t)
                     if trans_prob > 0.6:
                         if args["rotate"]:
-                            patch_t = rotate(patch_t, targetResize)
+                            patch_t = rotate(patch_t, (targetResize,targetResize))
                         if args["persp"]:
                             patch_t = perspective(patch_t)
                         if args["wrinkle"]:
@@ -377,7 +380,7 @@ def trainPatch(args):
                         patch_t = noise(patch_t)
                     if trans_prob > 0.6:
                         if args["rotate"]:
-                            patch_t = rotate(patch_t, targetResize)
+                            patch_t = rotate(patch_t, (targetResize, targetResize))
                         if args["persp"]:
                             patch_t = perspective(patch_t)
                         if args["wrinkle"]:
