@@ -379,9 +379,9 @@ def trainPatch(args):
 
             L_tot.backward()
             # patch.grad = F.conv2d(patch.grad, filter, padding="same")
-            cur = latent.clone()
+            # cur = latent.clone()
             optimizer.step()
-            print("Difference after step", (latent - cur).sum())
+            # print("Difference after step", (latent - cur).sum())
             # print(f"Latent gradient: ", latent.grad)
             print(f"Latent gradient sum of absolute: {torch.sum(torch.abs(latent.grad))}")
             if limit > 0:
