@@ -43,7 +43,7 @@ def saveImage(image, path):
     image = Image.fromarray(image)
     image.save(path)
 
-def generateImage(start, scheduler, unet, vae, text_embeddings, guidance_scale):
+def finalLatent(start, scheduler, unet, text_embeddings, guidance_scale):
     # run inference
     # Initial noise can be positive or negative.
     latents = start
@@ -54,7 +54,8 @@ def generateImage(start, scheduler, unet, vae, text_embeddings, guidance_scale):
         latent_model_input = scheduler.scale_model_input(latent_model_input, timestep=t)
 
         # predict the noise residual
-        noise_pred = unet(latent_model_input, t, encoder_hidden_states=text_embeddings).sample
+        with torch.no_grad():
+            noise_pred = unet(latent_model_input, t, encoder_hidden_states=text_embeddings).sample
 
         # perform guidance
         noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
@@ -63,8 +64,7 @@ def generateImage(start, scheduler, unet, vae, text_embeddings, guidance_scale):
         # compute the previous noisy sample x_t -> x_t-1
         latents = scheduler.step(noise_pred, t, latents).prev_sample
     # decode image
-    image = decodeImage(latents, vae)
-    return latents, image
+    return latents
 
 
 def encodeText(prompt, tokenizer, text_encoder):
@@ -139,8 +139,8 @@ def trainPatch(args):
     dif_height = 512  # default height of Stable Diffusion
     dif_width = 512  # default width of Stable Diffusion
     dif_guidance_scale = 7.5  # Scale for classifier-free guidance
-    t_start = 501
-    stepSize = 166
+    t_start = 500
+    stepSize = 167
     inference_steps = list(range(t_start, 0, -stepSize))
     if inference_steps[-1] != 1:
         inference_steps.append(1)
@@ -162,7 +162,8 @@ def trainPatch(args):
     print("Latent initialized")
 
     # Initial image and latent
-    latent, initialImage = generateImage(initial_latents, scheduler, unet, vae, text_embedding, dif_guidance_scale)
+    latent = finalLatent(initial_latents, scheduler, unet, text_embedding, dif_guidance_scale)
+    initialImage = decodeImage(latent, vae)
     saveImage(initialImage, os.path.join(image_dir, "initialImage.png"))
     latent.requires_grad_()
     print("Initial image generated")
@@ -266,7 +267,12 @@ def trainPatch(args):
 
             # Generate the patch and Compute L_tv
             diffused_latent = diffuseLatent(latent, scheduler, t_start, dif_height, dif_width, unet.config.in_channels)
-            patch = generateImage(diffused_latent, scheduler, unet, vae, text_embedding, dif_guidance_scale)[1]
+            latent = finalLatent(diffused_latent, scheduler, unet, text_embedding, dif_guidance_scale).detach()
+            latent.requires_grad_()
+            prev_opt_state = optimizer.state_dict()
+            optimizer = torch.optim.Adam([latent], lr=lr, amsgrad=True)
+            optimizer.load_state_dict(prev_opt_state)
+            patch = decodeImage(latent, vae)
             L_tv = smoothness(patch)
             
             advImages = torch.zeros(images.shape).cuda()
@@ -373,7 +379,9 @@ def trainPatch(args):
 
             L_tot.backward()
             # patch.grad = F.conv2d(patch.grad, filter, padding="same")
+            cur = latent.clone()
             optimizer.step()
+            print("Difference after step", (latent - cur).sum())
             # print(f"Latent gradient: ", latent.grad)
             print(f"Latent gradient sum of absolute: {torch.sum(torch.abs(latent.grad))}")
             if limit > 0:
