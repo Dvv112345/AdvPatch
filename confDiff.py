@@ -193,7 +193,7 @@ def trainPatch(args):
     del tokenizer, text_encoder
 
     # Initialize latent
-    generator = torch.Generator("cuda").manual_seed(123)
+    generator = torch.Generator("cuda").manual_seed(12321)
     initial_latents = torch.randn(
         (1, unet.config.in_channels, dif_height // 8, dif_width // 8),
         generator=generator,
@@ -471,7 +471,6 @@ def trainPatch(args):
         mAP = mAP_sum / len(train_loader)
         writer.add_scalar("mAP", mAP, global_step=epoch)
         print("mAP: ", mAP)
-        metric.reset()
         if not args["saveDetail"] and (epoch % 10 == 0 or epoch == max_epoch - 1):
             saveImage(patch, os.path.join(patch_path, f"{epoch}.png"))
             saveImage(advImages[0], os.path.join(combine_path, f"{epoch}.png"))
