@@ -17,6 +17,8 @@ from diffusers import AutoencoderKL, UNet2DConditionModel, DDIMScheduler
 from tqdm.auto import tqdm
 from torchvision import transforms
 from math import sqrt
+import gc
+import sys
 
 from inriaDataset import inriaDataset
 from PyTorch_YOLOv3.pytorchyolo import detect, models
@@ -24,6 +26,39 @@ from advArt_util import smoothness, detect_loss, combine, perspective, wrinkles,
 from pytorchYOLOv4.demo import DetectorYolov4
 from yolov7 import custom_detector
 
+
+def getsize(obj, name):
+    from types import ModuleType, FunctionType
+    """sum size of object & members."""
+    BLACKLIST = type, ModuleType, FunctionType
+    if isinstance(obj, BLACKLIST):
+        raise TypeError('getsize() does not take argument of type: '+ str(type(obj)))
+    seen_ids = set()
+    size = 0
+    objects = [obj]
+    while objects:
+        need_referents = []
+        for obj in objects:
+            if not isinstance(obj, BLACKLIST) and id(obj) not in seen_ids:
+                seen_ids.add(id(obj))
+                size += sys.getsizeof(obj)
+                need_referents.append(obj)
+                if torch.is_tensor(obj) and obj.grad is not None:
+                    print(name, "- Have grad")
+                    del obj.grad
+                    obj.requires_grad_(False)
+                if torch.is_tensor(obj) and obj.grad_fn is not None:
+                    print(name, "- Have grad fn")
+        objects = gc.get_referents(*need_referents)
+    return size
+
+def get_var_size(space):
+    sizes = []
+    for name, value in space.items():
+        size = getsize(value, name)
+        sizes.append((name, size))
+    sizes.sort(key=lambda elem: elem[1], reverse=True)
+    return sizes
 
 def diffuseLatent(latent, scheduler, t_start, height, width, in_channels):
     latents = latent * sqrt(scheduler.alphas_cumprod[t_start]) + torch.randn(
@@ -43,7 +78,7 @@ def saveImage(image, path):
     image = Image.fromarray(image)
     image.save(path)
 
-def finalLatent(start, scheduler, unet, text_embeddings, guidance_scale):
+def finalLatent(start, scheduler, unet, text_embeddings, guidance_scale, use_grad=True):
     # run inference
     # Initial noise can be positive or negative.
     latents = start
@@ -54,7 +89,10 @@ def finalLatent(start, scheduler, unet, text_embeddings, guidance_scale):
         latent_model_input = scheduler.scale_model_input(latent_model_input, timestep=t)
 
         # predict the noise residual
-        with torch.no_grad():
+        if not use_grad:
+            with torch.no_grad():
+                noise_pred = unet(latent_model_input, t, encoder_hidden_states=text_embeddings).sample
+        else:
             noise_pred = unet(latent_model_input, t, encoder_hidden_states=text_embeddings).sample
 
         # perform guidance
@@ -135,11 +173,13 @@ def trainPatch(args):
     text_encoder.to(torch_device)
     unet.to(torch_device)
     unet.eval()
+    vae.eval()
+    text_encoder.eval()
 
     dif_height = 512  # default height of Stable Diffusion
     dif_width = 512  # default width of Stable Diffusion
     dif_guidance_scale = 7.5  # Scale for classifier-free guidance
-    t_start = 500
+    t_start = 250
     stepSize = 167
     inference_steps = list(range(t_start, 0, -stepSize))
     if inference_steps[-1] != 1:
@@ -148,7 +188,9 @@ def trainPatch(args):
     num_inference_steps = len(inference_steps)  # Number of denoising steps
 
     # encode prompt
-    text_embedding = encodeText(prompt, tokenizer, text_encoder)
+    text_embedding = encodeText(prompt, tokenizer, text_encoder).detach()
+    text_embedding.requires_grad = False
+    del tokenizer, text_encoder
 
     # Initialize latent
     generator = torch.Generator("cuda").manual_seed(123)
@@ -162,11 +204,13 @@ def trainPatch(args):
     print("Latent initialized")
 
     # Initial image and latent
-    latent = finalLatent(initial_latents, scheduler, unet, text_embedding, dif_guidance_scale)
+    latent = finalLatent(initial_latents, scheduler, unet, text_embedding, dif_guidance_scale, False)
     initialImage = decodeImage(latent, vae)
     saveImage(initialImage, os.path.join(image_dir, "initialImage.png"))
     latent.requires_grad_()
     print("Initial image generated")
+    del initialImage
+    initial_latents.to("cpu")
 
     # Reset scheduler timesteps
     scheduler.set_timesteps(num_inference_steps)
@@ -189,32 +233,49 @@ def trainPatch(args):
     if model == "v3":
         print("Using YOLOv3")
         if tiny:
-            yolo = models.load_model("PyTorch_YOLOv3/config/yolov3-tiny.cfg", "PyTorch_YOLOv3/weights/yolov3-tiny.weights")
+            detector = models.load_model("PyTorch_YOLOv3/config/yolov3-tiny.cfg", "PyTorch_YOLOv3/weights/yolov3-tiny.weights")
         else:
-            yolo = models.load_model("PyTorch_YOLOv3/config/yolov3.cfg", "PyTorch_YOLOv3/weights/yolov3.weights")
+            detector = models.load_model("PyTorch_YOLOv3/config/yolov3.cfg", "PyTorch_YOLOv3/weights/yolov3.weights")
     # elif model == "v4":
     #     print("Using YOLOv4")
     #     detector = DetectorYolov4(show_detail=False, tiny=tiny)
     elif model == "v7":
         print("Using YOLOv7")
         detector = custom_detector.Detector("yolov7/yolov7.pt")
+
     elif model == "faster":
         print("Using Faster-RCNN")
         detector = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights="DEFAULT").cuda()
-        detector.eval()
+    
+    detector.eval()
 
     counter = 0
     metric = MeanAveragePrecision()
     optimizer = torch.optim.Adam([latent], lr=lr, amsgrad=True)
 
+    # print(get_var_size(locals()))
+    torch.cuda.empty_cache()
     for epoch in range(max_epoch):
         print(f"Epoch {epoch}")
+        mAP_sum = 0
+        # print(get_var_size(locals()))
         for images, labels in train_loader:
-            #     optimizer = torch.optim.Adam([patch_temp], lr=lr, amsgrad=True)
+            metric = MeanAveragePrecision()
+            unet = UNet2DConditionModel.from_pretrained(
+                pretrainedDiffusion, subfolder="unet", use_safetensors=True
+            ).to("cuda")
+            # print("Memory at start")
+            # print("torch.cuda.memory_allocated: %fGB"%(torch.cuda.memory_allocated(0)/1024/1024/1024))
+            # print("torch.cuda.memory_reserved: %fGB"%(torch.cuda.memory_reserved(0)/1024/1024/1024))
+            # print("torch.cuda.max_memory_reserved: %fGB"%(torch.cuda.max_memory_reserved(0)/1024/1024/1024))
             images = images.cuda()
             # labels = labels.cuda()
             if model == "v3":
-                initialBoxes = detect.detect_image(yolo, images, conf_thres=0.5, classes=0)
+                # if tiny:
+                #     detector = models.load_model("PyTorch_YOLOv3/config/yolov3-tiny.cfg", "PyTorch_YOLOv3/weights/yolov3-tiny.weights")
+                # else:
+                #     detector = models.load_model("PyTorch_YOLOv3/config/yolov3.cfg", "PyTorch_YOLOv3/weights/yolov3.weights")
+                initialBoxes = detect.detect_image(detector, images, conf_thres=0.5, classes=0)
                 # print(initialBoxes[0].shape)
                 # print(initialBoxes[0])
                 # print(initialBoxes)
@@ -262,19 +323,21 @@ def trainPatch(args):
                 label = torch.cat((currentBox[:14, 5].unsqueeze(1), center_x.unsqueeze(1), center_y.unsqueeze(1), width.unsqueeze(1), height.unsqueeze(1)), 1).cuda()
                 # print(label.shape)
                 labels.append(label)
-
             # print(labels[0])
 
             # Generate the patch and Compute L_tv
             diffused_latent = diffuseLatent(latent, scheduler, t_start, dif_height, dif_width, unet.config.in_channels)
-            latent = finalLatent(diffused_latent, scheduler, unet, text_embedding, dif_guidance_scale).detach()
-            latent.requires_grad_()
-            prev_opt_state = optimizer.state_dict()
-            optimizer = torch.optim.Adam([latent], lr=lr, amsgrad=True)
-            optimizer.load_state_dict(prev_opt_state)
-            patch = decodeImage(latent, vae)
+            new_latent = finalLatent(diffused_latent, scheduler, unet, text_embedding, dif_guidance_scale)
+            # latent.requires_grad_()
+            # prev_opt_state = optimizer.state_dict()
+            # optimizer = torch.optim.Adam([latent], lr=lr, amsgrad=True)
+            # optimizer.load_state_dict(prev_opt_state)
+            patch = decodeImage(new_latent, vae)
+            # print("Memory after decode image")
+            # print("torch.cuda.memory_allocated: %fGB"%(torch.cuda.memory_allocated(0)/1024/1024/1024))
+            # print("torch.cuda.memory_reserved: %fGB"%(torch.cuda.memory_reserved(0)/1024/1024/1024))
+            # print("torch.cuda.max_memory_reserved: %fGB"%(torch.cuda.max_memory_reserved(0)/1024/1024/1024))
             L_tv = smoothness(patch)
-            
             advImages = torch.zeros(images.shape).cuda()
             patch_o = patch
             if args["blur"]:
@@ -304,7 +367,7 @@ def trainPatch(args):
             
             boxes = []
             if model == "v3":
-                boxes = detect.detect_image(yolo, advImages, conf_thres=0, classes=0, target=target_cls)
+                boxes = detect.detect_image(detector, advImages, conf_thres=0, classes=0, target=target_cls)
             # elif model == "v4":
             #     _, _, boxes = detector.detect(input_imgs=advImages, cls_id_attacked=0, clear_imgs=None, with_bbox=True, conf_thresh=0)
             elif model == "v7":
@@ -378,9 +441,14 @@ def trainPatch(args):
             # print(filter)
 
             L_tot.backward()
+            # print("Memory after backward")
+            # print("torch.cuda.memory_allocated: %fGB"%(torch.cuda.memory_allocated(0)/1024/1024/1024))
+            # print("torch.cuda.memory_reserved: %fGB"%(torch.cuda.memory_reserved(0)/1024/1024/1024))
+            # print("torch.cuda.max_memory_reserved: %fGB"%(torch.cuda.max_memory_reserved(0)/1024/1024/1024))
             # patch.grad = F.conv2d(patch.grad, filter, padding="same")
             # cur = latent.clone()
             optimizer.step()
+            mAP_sum += metric.compute()["map"]
             # print("Difference after step", (latent - cur).sum())
             # print(f"Latent gradient: ", latent.grad)
             print(f"Latent gradient sum of absolute: {torch.sum(torch.abs(latent.grad))}")
@@ -388,12 +456,21 @@ def trainPatch(args):
                 latent.data = torch.clamp(latent.data, min=-limit, max=limit)
             print(f"Sum of change: {torch.sum(torch.abs(latent.data - initial_latents.data))}")
             optimizer.zero_grad()
+            del initialBoxes, boxes, prob, maxProb, labels, max_prob, diffused_latent, new_latent, patch, L_tot, L_det, advImages, gt, preds, images, L_tv, lossTag, patch_batch, mask, width, height, center_x, center_y, label, patch_o, patch_t, unet, currentBox, metric
+            latent.grad = None
+            gc.collect()
             torch.cuda.empty_cache()
+            # print("Memory after del")
+            # print("torch.cuda.memory_allocated: %fGB"%(torch.cuda.memory_allocated(0)/1024/1024/1024))
+            # print("torch.cuda.memory_reserved: %fGB"%(torch.cuda.memory_reserved(0)/1024/1024/1024))
+            # print("torch.cuda.max_memory_reserved: %fGB"%(torch.cuda.max_memory_reserved(0)/1024/1024/1024))
+            # print(get_var_size(locals()))
             counter += 1
+
         print(f"End of epoch {epoch}")
-        mAP = metric.compute()
-        writer.add_scalar("mAP", mAP["map"], global_step=epoch)
-        print("mAP: ", mAP["map"])
+        mAP = mAP_sum / len(train_loader)
+        writer.add_scalar("mAP", mAP, global_step=epoch)
+        print("mAP: ", mAP)
         metric.reset()
         if not args["saveDetail"] and (epoch % 10 == 0 or epoch == max_epoch - 1):
             saveImage(patch, os.path.join(patch_path, f"{epoch}.png"))
