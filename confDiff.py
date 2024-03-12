@@ -70,10 +70,10 @@ def decodeImage(latent, vae):
     latent = 1 / 0.18215 * latent
     image = vae.decode(latent).sample
     image = (image / 2 + 0.5)
-    return image
+    return image.squeeze()
 
 def saveImage(image, path):
-    image = image.clamp(0, 1).squeeze()
+    image = image.clamp(0, 1)
     image = (image.permute(1, 2, 0) * 255).to(torch.uint8).cpu().numpy()
     image = Image.fromarray(image)
     image.save(path)
@@ -141,6 +141,8 @@ def trainPatch(args):
     limit = args["latentLimit"]
     torch_device = "cuda"
     prompt = ["A high quality photo of a Pomeranian, clean background."]
+    t_start = 500
+    stepSize = 250
 
     # Set up directory for storing the result
     if not os.path.exists(image_dir):
@@ -179,8 +181,6 @@ def trainPatch(args):
     dif_height = 512  # default height of Stable Diffusion
     dif_width = 512  # default width of Stable Diffusion
     dif_guidance_scale = 7.5  # Scale for classifier-free guidance
-    t_start = 250
-    stepSize = 167
     inference_steps = list(range(t_start, 0, -stepSize))
     if inference_steps[-1] != 1:
         inference_steps.append(1)
@@ -264,10 +264,10 @@ def trainPatch(args):
             unet = UNet2DConditionModel.from_pretrained(
                 pretrainedDiffusion, subfolder="unet", use_safetensors=True
             ).to("cuda")
-            # print("Memory at start")
-            # print("torch.cuda.memory_allocated: %fGB"%(torch.cuda.memory_allocated(0)/1024/1024/1024))
-            # print("torch.cuda.memory_reserved: %fGB"%(torch.cuda.memory_reserved(0)/1024/1024/1024))
-            # print("torch.cuda.max_memory_reserved: %fGB"%(torch.cuda.max_memory_reserved(0)/1024/1024/1024))
+            print("Memory at start")
+            print("torch.cuda.memory_allocated: %fGB"%(torch.cuda.memory_allocated(0)/1024/1024/1024))
+            print("torch.cuda.memory_reserved: %fGB"%(torch.cuda.memory_reserved(0)/1024/1024/1024))
+            print("torch.cuda.max_memory_reserved: %fGB"%(torch.cuda.max_memory_reserved(0)/1024/1024/1024))
             images = images.cuda()
             # labels = labels.cuda()
             if model == "v3":
@@ -456,7 +456,10 @@ def trainPatch(args):
                 latent.data = torch.clamp(latent.data, min=-limit, max=limit)
             print(f"Sum of change: {torch.sum(torch.abs(latent.data - initial_latents.data))}")
             optimizer.zero_grad()
-            del initialBoxes, boxes, prob, maxProb, labels, max_prob, diffused_latent, new_latent, patch, L_tot, L_det, advImages, gt, preds, images, L_tv, lossTag, patch_batch, mask, width, height, center_x, center_y, label, patch_o, patch_t, unet, currentBox, metric
+            patch = patch.detach()
+            combined = advImages[0].detach()
+            del initialBoxes, boxes, prob, maxProb, labels, max_prob, diffused_latent, new_latent, L_tot, L_det, gt, preds, images, L_tv, lossTag, patch_batch, mask, width, height, center_x, center_y, label, patch_o, patch_t, unet, currentBox, metric, advImages
+            
             latent.grad = None
             gc.collect()
             torch.cuda.empty_cache()
@@ -473,7 +476,7 @@ def trainPatch(args):
         print("mAP: ", mAP)
         if not args["saveDetail"] and (epoch % 10 == 0 or epoch == max_epoch - 1):
             saveImage(patch, os.path.join(patch_path, f"{epoch}.png"))
-            saveImage(advImages[0], os.path.join(combine_path, f"{epoch}.png"))
+            saveImage(combined, os.path.join(combine_path, f"{epoch}.png"))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
