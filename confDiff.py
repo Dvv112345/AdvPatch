@@ -247,7 +247,6 @@ def trainPatch(args):
         print("Using Faster-RCNN")
         detector = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights="DEFAULT").cuda()
     
-    detector.eval()
 
     counter = 0
     metric = MeanAveragePrecision()
